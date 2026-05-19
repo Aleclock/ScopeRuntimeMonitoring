@@ -1,6 +1,6 @@
 {
     "name": "com.acproject.scoperuntimemonitoring",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "displayName": "Scope Runtime Monitoring",
     "description": "A Unity package for monitoring runtime performance and resource usage in Unity applications.",
     "unity": "2020.3",
