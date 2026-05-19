@@ -1,9 +1,12 @@
 {
     "name": "com.acproject.scoperuntimemonitoring",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "displayName": "Scope Runtime Monitoring",
     "description": "A Unity package for monitoring runtime performance and resource usage in Unity applications.",
     "unity": "2020.3",
+    "dependencies": {
+        "com.unity.textmeshpro": "3.0.6"
+    },
     "author": {
         "name": "AC Project"
     }
