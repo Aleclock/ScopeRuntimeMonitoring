@@ -1,0 +1,7 @@
+{
+  "name": "ScopeRuntimeMonitoring.Runtime",
+  "rootNamespace": "ScopeRuntimeMonitoring.Runtime",
+  "references": [
+    "Unity.TextMeshPro"
+  ]
+}
