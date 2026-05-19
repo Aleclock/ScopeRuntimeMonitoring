@@ -5,9 +5,10 @@ using System.Collections.Generic;
 
 public abstract class DebugPanelBase : MonoBehaviour
 {
+    public int importance; // Higher value = higher importance
     // Configurable size and position fields
-    protected Vector2 panelSize = new Vector2(200, 100);
-    protected Vector2 panelPosition = new Vector2(10, -10); // Offset from top-left
+    public Vector2 panelSize = new Vector2(200, 100);
+    public Vector2 panelPosition = new Vector2(10, -10); // Offset from top-left
 
     // Panel background image component reference
     protected Image panelBackground;
@@ -33,8 +34,14 @@ public abstract class DebugPanelBase : MonoBehaviour
     // Adjusts panel height based on row height and spacing
     protected void AdjustPanelSize(Vector2 newSize)
     {
-        panelSize = newSize; //new Vector2(panelSize.x, Mathf.Max(panelSize.y, newSize.y));
+        panelSize = new Vector2(panelSize.x, newSize.y);
         PositionPanelBackground();
+    }
+
+    public void ApplyPanelPosition()
+    {
+        var rectTransform = GetComponent<RectTransform>();
+        rectTransform.anchoredPosition = panelPosition;
     }
 
     protected float CalculateMaxLabelWidth(List<string> variableNames)
@@ -59,6 +66,11 @@ public abstract class DebugPanelBase : MonoBehaviour
 
         // Add padding to ensure space between the variable_name and value fields
         return maxWidth + 10;
+    }
+
+    protected void NotifyPanelInitialized()
+    {
+        DebugManager.Instance.OnPanelInitialized();
     }
 
     // Abstract methods to be implemented in derived classes for custom debug info
