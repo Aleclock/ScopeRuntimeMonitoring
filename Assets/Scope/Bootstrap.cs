@@ -8,7 +8,6 @@ public class Bootstrap : MonoBehaviour
         var example = FindObjectOfType<MonitoredExample>();
         if (example != null)
         {
-            Debug.Log("miao");
             Monitor.StartMonitoring(example);
             DebugManager.Instance.CreateDebugPanel<MonitorsPanel>().Initialize();
         }

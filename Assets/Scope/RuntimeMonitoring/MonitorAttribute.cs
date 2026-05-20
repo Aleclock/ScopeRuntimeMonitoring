@@ -5,6 +5,9 @@ using System;
 public class MonitorAttribute : Attribute
 {
     public string Label; 
+    public string Format { get; set; }
+    public string[] Tags { get; set; }
+    public bool Enabled { get; set; } = true;
     public MonitorAttribute(string label)
     {
         Label = label;

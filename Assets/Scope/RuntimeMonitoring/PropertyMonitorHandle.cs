@@ -1,28 +1,37 @@
+using System;
 using System.Reflection;
 
 public class PropertyMonitorHandle : IMonitorHandle
 {
-    private readonly PropertyInfo propertyInfo;
+    private readonly Func<object, object> _getter;
+    private readonly PropertyInfo _property;
 
-    public object Target { get; }
+    public string Id { get; }
     public string Name { get; }
+    public object Target { get; }
+    public bool Enabled { get; set; } = true;
+    public Type ValueType { get; }
 
     public PropertyMonitorHandle(object target, PropertyInfo propertyInfo)
     {
         Target = target;
-        this.propertyInfo = propertyInfo;
+        _property = propertyInfo;
+        Id = $"{target.GetHashCode()}::{propertyInfo.DeclaringType?.FullName}.{propertyInfo.Name}";
         Name = propertyInfo.Name;
+        ValueType = propertyInfo.PropertyType;
+        _getter = propertyInfo.CanRead ? GetterFactory.CreateGetter(propertyInfo) : null;
+    }
+
+    public object GetValueRaw()
+    {
+        if (!Enabled || Target == null || _getter == null)
+            return null;
+        
+        return _getter(Target);
     }
 
     public string GetValueString()
     {
-        if (Target == null)
-            return "null";
-
-        if (propertyInfo == null || !propertyInfo.CanRead)
-            return "unavailable";
-        
-        var value = propertyInfo.GetValue(Target);
-        return ValueFormatter.FormatValue(value);
+        return ValueFormatter.FormatValue(GetValueRaw());
     }
 }
