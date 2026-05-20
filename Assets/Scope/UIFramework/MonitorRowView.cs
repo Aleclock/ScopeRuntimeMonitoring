@@ -49,13 +49,16 @@ public sealed class MonitorRowView
         var opaqueTextColor = textColor;
         opaqueTextColor.a = 1f;
         _label.color = opaqueTextColor;
-        _label.alignment = TextAlignmentOptions.MidlineLeft;
+        _label.alignment = TextAlignmentOptions.Left;
         _label.enableWordWrapping = false;
+        _label.overflowMode = TextOverflowModes.Ellipsis;
+        _label.margin = new Vector4(8f, 0f, 8f, 0f);
         _label.raycastTarget = false;
 
         var labelRect = _label.rectTransform;
         labelRect.anchorMin = Vector2.zero;
         labelRect.anchorMax = Vector2.one;
+            labelRect.pivot = new Vector2(0.5f, 0.5f);
         labelRect.offsetMin = new Vector2(8f, 0f);
         labelRect.offsetMax = new Vector2(-8f, 0f);
     }

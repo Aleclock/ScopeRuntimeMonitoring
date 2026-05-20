@@ -90,6 +90,9 @@ public sealed class MonitorBoxView
         _contentRect.anchorMax = new Vector2(1f, 1f);
         _contentRect.pivot = new Vector2(0.5f, 1f);
         _contentRect.anchoredPosition = Vector2.zero;
+        _contentRect.offsetMin = Vector2.zero;
+        _contentRect.offsetMax = Vector2.zero;
+        _contentRect.sizeDelta = Vector2.zero;
 
         var layout = contentObject.GetComponent<VerticalLayoutGroup>();
         layout.childAlignment = TextAnchor.UpperLeft;
