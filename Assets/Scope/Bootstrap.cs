@@ -9,7 +9,7 @@ public class Bootstrap : MonoBehaviour
         if (example != null)
         {
             Monitor.StartMonitoring(example);
-            DebugManager.Instance.CreateDebugPanel<MonitorsPanel>().Initialize();
+            DebugManager.Instance.CreateDebugPanel<MonitorPanelController>().Initialize();
         }
     }
 }
