@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+  <ui:VisualElement class="flex-root">
+    <ui:VisualElement class="panel"><ui:Label text="Gameplay1" class="title" /><ui:Label text="Health: 48.47" /><ui:Label text="IsAlive: true" /></ui:VisualElement>
+    <ui:VisualElement class="panel"><ui:Label text="Gameplay2" class="title" /><ui:Label text="Health: 48.47" /><ui:Label text="IsAlive: true" /></ui:VisualElement>
+    <ui:VisualElement class="panel"><ui:Label text="Gameplay3" class="title" /><ui:Label text="Health: 48.47" /><ui:Label text="IsAlive: true" /></ui:VisualElement>
+    <ui:VisualElement class="panel"><ui:Label text="Gameplay4" class="title" /><ui:Label text="Health: 48.47" /><ui:Label text="IsAlive: true" /></ui:VisualElement>
+    <ui:VisualElement class="panel"><ui:Label text="Gameplay5" class="title" /><ui:Label text="Health: 48.47" /><ui:Label text="IsAlive: true" /></ui:VisualElement>
+    <ui:VisualElement class="panel"><ui:Label text="Gameplay6" class="title" /><ui:Label text="Health: 48.47" /><ui:Label text="IsAlive: true" /></ui:VisualElement>
+  </ui:VisualElement>
+</ui:UXML>

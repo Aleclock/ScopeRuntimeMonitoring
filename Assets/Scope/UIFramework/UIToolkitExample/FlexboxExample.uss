@@ -1,0 +1,26 @@
+/* Flexbox example USS */
+.flex-root {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  padding: 12px;
+  width: 100%;
+  height: 100%;
+}
+
+.panel {
+  background-color: #2b2f36cc;
+  color: #ffffff;
+  border-radius: 4px;
+  padding: 8px;
+  min-width: 220px;
+  max-width: 420px;
+  width: 320px; /* basis */
+  margin-right: 12px;
+  margin-bottom: 12px;
+}
+
+.panel .title {
+  unity-font-style: bold;
+  margin-bottom: 6px;
+}

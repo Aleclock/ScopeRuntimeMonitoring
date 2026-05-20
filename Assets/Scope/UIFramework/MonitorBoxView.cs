@@ -24,7 +24,7 @@ public sealed class MonitorBoxView
         _panelRect = panelObject.GetComponent<RectTransform>();
         _panelRect.anchorMin = new Vector2(0f, 1f);
         _panelRect.anchorMax = new Vector2(0f, 1f);
-        _panelRect.pivot = new Vector2(0f, 1f);
+        _panelRect.pivot = GetPivotForAnchor(definition.Anchor);
         _panelRect.sizeDelta = definition.PanelSize;
 
         var title = CreateTitle(panelObject.transform, definition);
@@ -143,5 +143,13 @@ public sealed class MonitorBoxView
     {
         foreach (var row in _rows)
             row.Refresh();
+    }
+
+    private static Vector2 GetPivotForAnchor(BoxAnchor anchor)
+    {
+        var pivotX = anchor == BoxAnchor.TopRight || anchor == BoxAnchor.BottomRight ? 1f : 0f;
+        var pivotY = anchor == BoxAnchor.BottomLeft || anchor == BoxAnchor.BottomRight ? 0f : 1f;
+
+        return new Vector2(pivotX, pivotY);
     }
 }

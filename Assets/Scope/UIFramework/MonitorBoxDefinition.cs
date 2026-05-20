@@ -5,10 +5,18 @@ public sealed class MonitorBoxDefinition
 {
     public string Id;
     public string Title;
-    
+
     public BoxAnchor Anchor = BoxAnchor.TopLeft;
     public Vector2 PanelSize = new Vector2(420f, 260f);
     public Vector2 Margin = new Vector2(12f, 12f);
+
+    public bool AutoSizeWidth = true;
+    public bool AutoSizeHeight = true;
+    public float MinPanelWidth = 280f;
+    public float MaxPanelWidth = 460f;
+    public float MinPanelHeight = 160f;
+    public float MaxPanelHeight = 340f;
+    public float EstimatedCharacterWidth = 8.5f;
 
     public int FontSize = 17;
     public float TitleHeight = 30f;

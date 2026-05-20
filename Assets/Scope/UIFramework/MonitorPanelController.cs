@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 public class MonitorPanelController : DebugPanelBase
 {
     private readonly List<MonitorBoxView> _boxViews = new List<MonitorBoxView>();
@@ -8,14 +9,21 @@ public class MonitorPanelController : DebugPanelBase
     {
         _definitions = DefaultBoxDefinitions.Create();
         var allHandles = new List<IMonitorHandle>(Monitor.Registry.GetMonitorHandles());
-
         var placementManager = new BoxPlacementManager();
-        var positions = placementManager.BuildPositions(_definitions);
+        var handlesByBoxId = new Dictionary<string, IReadOnlyList<IMonitorHandle>>();
 
         foreach (var definition in _definitions)
         {
             var handlesForBox = BuildHandleListForBox(allHandles, definition);
-            var boxView = new MonitorBoxView(transform, definition, handlesForBox);
+            handlesByBoxId[definition.Id] = handlesForBox;
+            definition.PanelSize = placementManager.CalculatePanelSize(definition, handlesForBox);
+        }
+
+        var positions = placementManager.BuildPositions(_definitions);
+
+        foreach (var definition in _definitions)
+        {
+            var boxView = new MonitorBoxView(transform, definition, handlesByBoxId[definition.Id]);
 
             if (positions.TryGetValue(definition.Id, out var position))
             {
