@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -11,6 +12,7 @@ public class DynamicColumnLayout : MonoBehaviour
     [SerializeField] private MonitorPanelOverrides overrides;
 
     private readonly List<RowBinding> rowBindings = new List<RowBinding>();
+    private readonly Dictionary<object, VisualElement> targetToBoxMap = new Dictionary<object, VisualElement>();
 
     private UIDocument uiDocument;
     private MonitorPanelConfig resolvedConfig;
@@ -19,27 +21,51 @@ public class DynamicColumnLayout : MonoBehaviour
 
     private void OnEnable()
     {
-        if (!TryGetComponent(out uiDocument))
-        {
-            uiDocument = gameObject.AddComponent<UIDocument>();
-        }
+        rowBindings.Clear();
+        targetToBoxMap.Clear();
 
         resolvedConfig = MonitorPanelConfigResolver.Resolve(panelSettings, overrides);
 
-        if (resolvedConfig.PanelSettings == null || resolvedConfig.BoxStyleSheet == null)
+        Monitor.TargetRegistered += OnTargetRegistered;
+
+        EnsureUIExists();
+        ApplyPanelStyleSheet();
+        BuildInitialLayoutFromExistingTargets();
+    }
+
+    private void OnDisable()
+    {
+        Monitor.TargetRegistered -= OnTargetRegistered;
+    }
+
+    private void OnTargetRegistered(object target)
+    {
+        EnsureUIExists();
+        EnsureColumnContainer();
+        AddBoxForTarget(target);
+    }
+
+    private void BuildInitialLayoutFromExistingTargets()
+    {
+        EnsureColumnContainer();
+
+        var allHandles = Monitor.Registry.GetMonitorHandles();
+        var existingTargets = allHandles
+            .Select(handle => handle.Target)
+            .Where(target => target != null)
+            .Distinct()
+            .ToList();
+
+        foreach (var target in existingTargets)
         {
-            if (panelSettings != null && panelSettings.logMissingReferences)
-                Debug.LogError("DynamicColumnLayout: missing resolved UI Toolkit references.", this);
-            return;
+            AddBoxForTarget(target);
         }
+    }
 
-        uiDocument.panelSettings = resolvedConfig.PanelSettings;
-
-        VisualElement root = uiDocument.rootVisualElement;
-        root.Clear();
-
-        if (!root.styleSheets.Contains(resolvedConfig.BoxStyleSheet))
-            root.styleSheets.Add(resolvedConfig.BoxStyleSheet);
+    private void EnsureColumnContainer()
+    {
+        if (columnContainer != null)
+            return;
 
         columnContainer = new VisualElement();
         columnContainer.style.height = Length.Percent(100);
@@ -53,44 +79,44 @@ public class DynamicColumnLayout : MonoBehaviour
 
         ApplyLayoutAnchor(resolvedConfig.Anchor);
 
-        // Build monitored boxes from the live registry instead of demo placeholders
-        var allHandles = new List<IMonitorHandle>(Monitor.Registry.GetMonitorHandles());
-        var definitions = DefaultBoxDefinitions.Create();
-
-        foreach (var definition in definitions)
-        {
-            var handlesForBox = BuildHandleListForBox(allHandles, definition);
-            if (handlesForBox == null || handlesForBox.Count == 0)
-                continue;
-
-            var boxElement = CreateUITKBoxForDefinition(definition, handlesForBox);
-            columnContainer.Add(boxElement);
-        }
-
-        root.Add(columnContainer);
+        var root = uiDocument.rootVisualElement;
+        if (!root.Contains(columnContainer))
+            root.Add(columnContainer);
     }
 
-    private IReadOnlyList<IMonitorHandle> BuildHandleListForBox(List<IMonitorHandle> source, MonitorBoxDefinition definition)
+    private string GetDisplayNameForTarget(object target)
     {
-        var filtered = new List<IMonitorHandle>();
+        if (target == null)
+            return "Unknown";
 
-        foreach (var handle in source)
-        {
-            if (definition.FilterRule == null || definition.FilterRule.Include(handle))
-            {
-                filtered.Add(handle);
-            }
-        }
+        if (target is UnityEngine.Component component && component.gameObject != null)
+            return component.gameObject.name;
 
-        if (definition.SortRule != null)
-        {
-            filtered.Sort(definition.SortRule.Compare);
-        }
-
-        return filtered;
+        return target.GetType().Name;
     }
 
-    private VisualElement CreateUITKBoxForDefinition(MonitorBoxDefinition definition, IReadOnlyList<IMonitorHandle> handles)
+    private void AddBoxForTarget(object target)
+    {
+        if (target == null)
+            return;
+
+        if (targetToBoxMap.ContainsKey(target))
+            return;
+
+        var allHandles = new List<IMonitorHandle>(Monitor.Registry.GetMonitorHandles());
+        var handlesForTarget = allHandles.Where(handle => ReferenceEquals(handle.Target, target)).ToList();
+
+        if (handlesForTarget.Count == 0)
+            return;
+
+        var title = GetDisplayNameForTarget(target);
+        var boxElement = CreateUITKBoxForInstance(target, title, handlesForTarget);
+
+        targetToBoxMap[target] = boxElement;
+        columnContainer.Add(boxElement);
+    }
+
+    private VisualElement CreateUITKBoxForInstance(object target, string title, IReadOnlyList<IMonitorHandle> handles)
     {
         var box = new VisualElement();
         box.AddToClassList("custom-box");
@@ -99,7 +125,7 @@ public class DynamicColumnLayout : MonoBehaviour
         var headerRow = new VisualElement();
         headerRow.AddToClassList("box-header-row");
 
-        var titleLabel = new Label(definition.Title);
+        var titleLabel = new Label(title);
         titleLabel.AddToClassList("box-header");
         headerRow.Add(titleLabel);
 
@@ -146,6 +172,15 @@ public class DynamicColumnLayout : MonoBehaviour
         return box;
     }
 
+    private void Update()
+    {
+        if (resolvedConfig.PanelSettings == null)
+            return;
+
+        ApplyLayoutAnchor(resolvedConfig.Anchor);
+        RefreshMonitoredValues();
+    }
+
     private void RefreshMonitoredValues()
     {
         foreach (var binding in rowBindings)
@@ -156,15 +191,6 @@ public class DynamicColumnLayout : MonoBehaviour
             binding.KeyLabel.text = binding.Handle.Name + ":";
             binding.ValueLabel.text = binding.Handle.GetValueString();
         }
-    }
-
-    private void Update()
-    {
-        if (resolvedConfig.PanelSettings == null)
-            return;
-
-        ApplyLayoutAnchor(resolvedConfig.Anchor);
-        RefreshMonitoredValues();
     }
 
     private void ApplyLayoutAnchor(MonitorPanelAnchor anchor)
@@ -188,6 +214,35 @@ public class DynamicColumnLayout : MonoBehaviour
                 columnContainer.style.flexDirection = FlexDirection.ColumnReverse;
                 columnContainer.style.flexWrap = Wrap.WrapReverse;
                 break;
+        }
+    }
+
+    private void EnsureUIExists()
+    {
+        if (uiDocument == null)
+        {
+            if (!TryGetComponent(out uiDocument))
+                uiDocument = gameObject.AddComponent<UIDocument>();
+        }
+
+        if (uiDocument.panelSettings == null && panelSettings != null)
+            uiDocument.panelSettings = panelSettings.panelSettings;
+
+        ApplyPanelStyleSheet();
+    }
+
+    private void ApplyPanelStyleSheet()
+    {
+        if (uiDocument == null)
+            return;
+
+        var root = uiDocument.rootVisualElement;
+        if (root == null)
+            return;
+
+        if (resolvedConfig.BoxStyleSheet != null && !root.styleSheets.Contains(resolvedConfig.BoxStyleSheet))
+        {
+            root.styleSheets.Add(resolvedConfig.BoxStyleSheet);
         }
     }
 

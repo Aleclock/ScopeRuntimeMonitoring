@@ -33,6 +33,13 @@
     font-size: 13px;
 }
 
+/* Style for the value label on the right */
+.stat-value {
+    color: #F9FAFB; /* Soft white value text */
+    font-size: 13px;
+    -unity-font-style: bold;
+}
+
 /* Header row layout to hold both the Title and the Toggle Button */
 .box-header-row {
     flex-direction: row;
