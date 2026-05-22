@@ -20,14 +20,14 @@ public class MonitoringRegistry
     } 
 
     
-    public void RegisterTarget(object target)
+    public bool RegisterTarget(object target)
     {
-        if (target == null) return;
+        if (target == null) return false;
 
         lock (_sync)
         {
             if (_targetHandles.ContainsKey(target))
-                return; // Already registered
+                return _targetHandles[target].Count > 0; // Already registered, return whether it has handles
         }
 
         var handles = new List<IMonitorHandle>();
@@ -39,11 +39,13 @@ public class MonitoringRegistry
         {
             _targetHandles[target] = handles;
             _handles.AddRange(handles);
+            return true;
         }
         else
         {
             // Still track target to prevent repeated discovery attempts.
             _targetHandles[target] = handles;
+            return false;
         }
     }
 

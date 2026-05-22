@@ -4,15 +4,19 @@ using System.Diagnostics;
 public static class Monitor
 {
     public static MonitoringRegistry Registry { get; private set; }
+    public static event System.Action<object> TargetRegistered;
 
     static Monitor()
     {
         Registry = new MonitoringRegistry();
+        MonitorUIService.EnsureSubscribed();
     }
 
     public static void StartMonitoring(object target)
     {
-        Registry.RegisterTarget(target);
+        bool added = Registry.RegisterTarget(target);
+        if (added)
+            TargetRegistered?.Invoke(target);
     }
 
     public static void StopMonitoring(object target)

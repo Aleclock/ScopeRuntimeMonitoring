@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-public class DynamicColumnLayout : MonoBehaviour
+public class RuntimeFlexLayout : MonoBehaviour
 {
     [Header("Theme & Styles Configuration")]
     [SerializeField] private ThemeStyleSheet defaultTheme;
@@ -30,7 +30,7 @@ public class DynamicColumnLayout : MonoBehaviour
         {
             if (defaultTheme == null || boxStyleSheet == null)
             {
-                Debug.LogError("DynamicColumnLayout: Missing Theme or Style Sheet references in Inspector!", this);
+                Debug.LogError("RuntimeFlexLayout: Missing Theme or Style Sheet references in Inspector!", this);
                 return;
             }
 
