@@ -1,20 +1,20 @@
 /* Style for the outer box container */
 .custom-box {
-    background-color: rgba(31, 41, 55, 0.8);
-    border-radius: 15px;
-    border-width: 5px;
-    border-color: #3B82F6; /* Bright blue border */
-    margin: 8px;
-    padding: 12px;
-    width: 260px;
+    background-color: rgba(31, 41, 55, 0.9);
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: #1e1e1e; /* Bright blue border */
+    margin: 2px;
+    padding: 6px;
+    width: 25%;
 }
 
 /* Style for the box's header text */
 .box-header {
     color: #FBBF24; /* Warm amber/yellow */
-    font-size: 16px;
+    font-size: 10px;
     -unity-font-style: bold;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     letter-spacing: 1px;
 }
 
@@ -23,21 +23,25 @@
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    margin-top: 4px;
-    margin-bottom: 4px;
+    margin: 0px;
+    border-width: 1px;
+    padding: 0px;
 }
 
 /* Style for the static label on the left */
 .stat-label {
     color: #9CA3AF; /* Light gray text */
-    font-size: 13px;
+    font-size: 8px;
+    margin: 0px;
+    padding: 0px;
 }
 
 /* Style for the value label on the right */
 .stat-value {
     color: #F9FAFB; /* Soft white value text */
-    font-size: 13px;
+    font-size: 8px;
     -unity-font-style: bold;
+    padding: 0;
 }
 
 /* Header row layout to hold both the Title and the Toggle Button */
@@ -45,7 +49,7 @@
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
 }
 
 /* Style for the collapse toggle button */
