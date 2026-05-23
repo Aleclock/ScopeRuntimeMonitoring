@@ -3,7 +3,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-public class DynamicColumnLayout : MonoBehaviour
+public class MonitorPanelView : MonoBehaviour
 {
     [Header("Shared Defaults")]
     [SerializeField] private MonitorPanelSettings panelSettings;

@@ -1,6 +1,3 @@
-using UnityEditor;
-using UnityEngine;
-
 public static class ValueFormatter
 {
     public static string FormatValue(object value)

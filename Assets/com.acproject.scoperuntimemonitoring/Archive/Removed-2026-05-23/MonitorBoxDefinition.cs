@@ -1,5 +1,3 @@
-using UnityEngine;
-
 [System.Serializable]
 public sealed class MonitorBoxDefinition
 {

@@ -36,10 +36,10 @@ public static class MonitorUIService
             return;
         }
 
-        // Fallback: create a GameObject and attach DynamicColumnLayout
+        // Fallback: create a GameObject and attach MonitorPanelView
         var runtimeGo = new GameObject("RuntimeMonitorUI");
         Object.DontDestroyOnLoad(runtimeGo);
-        runtimeGo.AddComponent<DynamicColumnLayout>();
+        runtimeGo.AddComponent<MonitorPanelView>();
         s_uiCreated = true;
     }
 }
