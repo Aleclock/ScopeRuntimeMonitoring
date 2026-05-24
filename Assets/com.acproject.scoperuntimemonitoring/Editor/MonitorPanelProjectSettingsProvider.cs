@@ -6,8 +6,7 @@ using UnityEngine.Rendering;
 
 static class MonitorPanelProjectSettingsProvider
 {
-    private const string FolderPath = "Assets/ScopeRuntimeMonitoringSettings";
-    private const string AssetPath = FolderPath + "/MonitorPanelSettings.asset";
+    private const string ResourcePath = "Defaults/MonitorPanelSettings";
 
     [SettingsProvider]
     public static SettingsProvider CreateProvider()
@@ -21,11 +20,11 @@ static class MonitorPanelProjectSettingsProvider
 
     private static void DrawSettings(string searchContext)
     {
-        MonitorPanelSettings settings = GetOrCreateSettings();
+        MonitorPanelSettings settings = LoadSettings();
         
         if (settings == null)
         {
-            EditorGUILayout.HelpBox("Could not create or load MonitorPanelSettings.asset.", MessageType.Error);
+            EditorGUILayout.HelpBox("Could not load the package default MonitorPanelSettings asset.", MessageType.Error);
             return;
         }
 
@@ -41,21 +40,9 @@ static class MonitorPanelProjectSettingsProvider
         }
     }
 
-    private static MonitorPanelSettings GetOrCreateSettings()
+    private static MonitorPanelSettings LoadSettings()
     {
-        MonitorPanelSettings settings = AssetDatabase.LoadAssetAtPath<MonitorPanelSettings>(AssetPath);
-
-        if (settings != null)
-            return settings;
-        
-        if (!AssetDatabase.IsValidFolder(FolderPath))
-            AssetDatabase.CreateFolder("Assets", "ScopeRuntimeMonitoringSettings");
-        
-        settings = ScriptableObject.CreateInstance<MonitorPanelSettings>();
-        AssetDatabase.CreateAsset(settings, AssetPath);
-        AssetDatabase.SaveAssets();
-        AssetDatabase.Refresh();
-        return settings;
+        return Resources.Load<MonitorPanelSettings>(ResourcePath);
     }
 }
 #endif

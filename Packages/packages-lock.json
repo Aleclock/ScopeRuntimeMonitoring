@@ -1,26 +1,5 @@
 {
   "dependencies": {
-    "com.baracuda.runtime-monitoring": {
-      "version": "https://github.com/JohnBaracuda/com.baracuda.runtime-monitoring.git",
-      "depth": 0,
-      "source": "git",
-      "dependencies": {},
-      "hash": "6d24d331f37549b074775899bb2eaa498e12c334"
-    },
-    "com.baracuda.thread-dispatcher": {
-      "version": "https://github.com/JohnBaracuda/com.baracuda.thread-dispatcher.git",
-      "depth": 0,
-      "source": "git",
-      "dependencies": {},
-      "hash": "d78d8007c6bc56432b1aa9c79fbb351bdeabc26a"
-    },
-    "com.iam1337.extdebug": {
-      "version": "https://github.com/iam1337/extDebug.git#upm",
-      "depth": 0,
-      "source": "git",
-      "dependencies": {},
-      "hash": "b70d7ad48308429ae9760091cefd3c3683ac9250"
-    },
     "com.unity.collab-proxy": {
       "version": "2.12.4",
       "depth": 0,

@@ -11,14 +11,18 @@ public class PropertyMonitorHandle : IMonitorHandle
     public object Target { get; }
     public bool Enabled { get; set; } = true;
     public Type ValueType { get; }
+    public MonitorWidgetMetadata Metadata { get; }
 
-    public PropertyMonitorHandle(object target, PropertyInfo propertyInfo)
+    public PropertyMonitorHandle(object target, PropertyInfo propertyInfo, MonitorAttribute attribute)
     {
         Target = target;
         _property = propertyInfo;
-        Id = $"{target.GetHashCode()}::{propertyInfo.DeclaringType?.FullName}.{propertyInfo.Name}";
-        Name = propertyInfo.Name;
+        Name = attribute != null && !string.IsNullOrWhiteSpace(attribute.Label)
+            ? attribute.Label
+            : propertyInfo.Name;
         ValueType = propertyInfo.PropertyType;
+        Metadata = MonitorWidgetMetadata.From(target, propertyInfo, attribute);
+        Id = Metadata.Id;
         _getter = propertyInfo.CanRead ? GetterFactory.CreateGetter(propertyInfo) : null;
     }
 
@@ -26,7 +30,7 @@ public class PropertyMonitorHandle : IMonitorHandle
     {
         if (!Enabled || Target == null || _getter == null)
             return null;
-        
+
         return _getter(Target);
     }
 

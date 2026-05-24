@@ -43,6 +43,9 @@ public static class MonitorPanelConfigResolver
 
         if (overrides != null)
         {
+            if (!overrides.EnableRuntimePanel)
+                return default;
+
             if (overrides.OverridePanelSettings && overrides.PanelSettings != null)
                 panelSettings = overrides.PanelSettings;
 
@@ -61,10 +64,10 @@ public static class MonitorPanelConfigResolver
 
         if (panelSettings == null)
             Debug.LogError("MonitorPanelConfigResolver: panelSettings is null after resolution.");
-        
+
         if (boxStyleSheet == null)
             Debug.LogError("MonitorPanelConfigResolver: boxStyleSheet is null after resolution.");
-        
+
         return new MonitorPanelConfig(panelSettings, boxStyleSheet, anchor, updateInterval, padding);
     }
 }

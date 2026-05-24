@@ -7,16 +7,15 @@ public class MonitoringRegistry
     private readonly List<IMonitorHandle> _handles = new List<IMonitorHandle>();
     private readonly Dictionary<object, List<IMonitorHandle>> _targetHandles = new Dictionary<object, List<IMonitorHandle>>();
     private readonly object _sync = new object();
+
     public IReadOnlyList<IMonitorHandle> GetMonitorHandles()
     {
         lock (_sync)
         {
-            // Return a snapshot to avoid external mutation/race issues.
             return _handles.ToArray();
         }
-    } 
+    }
 
-    
     public bool RegisterTarget(object target)
     {
         if (target == null) return false;
@@ -24,7 +23,7 @@ public class MonitoringRegistry
         lock (_sync)
         {
             if (_targetHandles.ContainsKey(target))
-                return _targetHandles[target].Count > 0; // Already registered, return whether it has handles
+                return _targetHandles[target].Count > 0;
         }
 
         var handles = new List<IMonitorHandle>();
@@ -38,12 +37,9 @@ public class MonitoringRegistry
             _handles.AddRange(handles);
             return true;
         }
-        else
-        {
-            // Still track target to prevent repeated discovery attempts.
-            _targetHandles[target] = handles;
-            return false;
-        }
+
+        _targetHandles[target] = handles;
+        return false;
     }
 
     private void DiscoverFields(object target, List<IMonitorHandle> destination)
@@ -53,23 +49,26 @@ public class MonitoringRegistry
 
         foreach (var field in fields)
         {
-            if (!field.IsDefined(typeof(MonitorAttribute), true))
+            var attribute = field.GetCustomAttribute<MonitorAttribute>(true);
+            if (attribute == null || !attribute.Enabled)
                 continue;
 
-            destination.Add(new FieldMonitorHandle(target, field));
+            destination.Add(new FieldMonitorHandle(target, field, attribute));
         }
     }
 
     private void DiscoverProperties(object target, List<IMonitorHandle> destination)
     {
-        Type type = target.GetType();
+        var type = target.GetType();
         var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        foreach (var p in properties)
+
+        foreach (var property in properties)
         {
-            if (!p.IsDefined(typeof(MonitorAttribute), true))
+            var attribute = property.GetCustomAttribute<MonitorAttribute>(true);
+            if (attribute == null || !attribute.Enabled)
                 continue;
-            
-            destination.Add(new PropertyMonitorHandle(target, p));
+
+            destination.Add(new PropertyMonitorHandle(target, property, attribute));
         }
     }
 
@@ -80,11 +79,11 @@ public class MonitoringRegistry
         lock (_sync)
         {
             if (!_targetHandles.TryGetValue(target, out var handles))
-                return; // Not registered
-            
-            foreach (var h in handles)
-                _handles.Remove(h);
-            
+                return;
+
+            foreach (var handle in handles)
+                _handles.Remove(handle);
+
             _targetHandles.Remove(target);
         }
     }

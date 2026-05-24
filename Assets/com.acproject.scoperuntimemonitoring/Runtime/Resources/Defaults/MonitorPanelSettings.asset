@@ -14,7 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   panelSettings: {fileID: 11400000, guid: 9df74f6d6dbc048989b1b1441f6b25d7, type: 2}
   boxStyleSheet: {fileID: 7433441132597879392, guid: b5cc9105f1580499a8dd1eaefdc0ac15, type: 3}
+  enableRuntimeMonitoring: 1
   defaultAnchor: 0
   defaultUpdateInterval: 0.5
-  defaultPadding: 15
+  defaultPadding: 0
+  defaultPanelWidth: 430
+  defaultPanelHeight: 280
+  defaultMargin: 5
+  defaultFontSize: 17
+  defaultTitleHeight: 30
+  defaultRowHeight: 26
+  defaultRowSpacing: 0
   logMissingReferences: 1

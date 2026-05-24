@@ -1,8 +1,5 @@
 {
   "dependencies": {
-    "com.baracuda.runtime-monitoring": "https://github.com/JohnBaracuda/com.baracuda.runtime-monitoring.git",
-    "com.baracuda.thread-dispatcher": "https://github.com/JohnBaracuda/com.baracuda.thread-dispatcher.git",
-    "com.iam1337.extdebug": "https://github.com/iam1337/extDebug.git#upm",
     "com.unity.collab-proxy": "2.12.4",
     "com.unity.feature.development": "1.0.1",
     "com.unity.textmeshpro": "3.0.9",
