@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -16,6 +17,11 @@ public class MonitorPanelView : MonoBehaviour
 
     private UIDocument uiDocument;
     private MonitorPanelConfig resolvedConfig;
+
+    // Responsive layout settings
+    private float responsiveBoxMinPx = 160f;
+    private float responsiveBoxMaxPx = 340f;
+    private float responsiveBoxFraction = 0.22f; // fraction of root width for box size
 
     private VisualElement columnContainer;
     private readonly Dictionary<MonitorPanelAnchor, VisualElement> singlePanelAnchorContainers = new Dictionary<MonitorPanelAnchor, VisualElement>();
@@ -242,19 +248,18 @@ public class MonitorPanelView : MonoBehaviour
             var keyLabel = new Label(handle.Name + ":");
             keyLabel.AddToClassList("stat-label");
 
-            var valueLabel = new Label(handle.GetValueString());
-            valueLabel.AddToClassList("stat-value");
-
-            rowContainer.Add(keyLabel);
-            rowContainer.Add(valueLabel);
-            statsContainer.Add(rowContainer);
-
-            rowBindings.Add(new RowBinding
+            var binding = new RowBinding
             {
                 Handle = handle,
-                KeyLabel = keyLabel,
-                ValueLabel = valueLabel
-            });
+                KeyLabel = keyLabel
+            };
+
+            var widgetRoot = CreateWidgetRoot(handle, binding);
+            rowContainer.Add(keyLabel);
+            rowContainer.Add(widgetRoot);
+            statsContainer.Add(rowContainer);
+
+            rowBindings.Add(binding);
         }
 
         ApplyBoxOverrides(box, statsContainer, boxOverrides);
@@ -267,6 +272,92 @@ public class MonitorPanelView : MonoBehaviour
 
         box.Add(statsContainer);
         return box;
+    }
+
+    private VisualElement CreateWidgetRoot(IMonitorHandle handle, RowBinding binding)
+    {
+        var root = new VisualElement();
+        root.AddToClassList("stat-widget");
+        root.AddToClassList($"stat-widget--{handle.Metadata.WidgetType.ToString().ToLowerInvariant()}");
+
+        var rawValue = handle.GetValueRaw();
+
+        switch (handle.Metadata.WidgetType)
+        {
+            case MonitorWidgetType.Toggle:
+            {
+                var toggle = new Toggle();
+                toggle.SetEnabled(false);
+                toggle.value = ToBool(rawValue);
+                root.Add(toggle);
+
+                binding.ToggleControl = toggle;
+                break;
+            }
+
+            case MonitorWidgetType.Slider:
+            {
+                var container = new VisualElement();
+                container.style.flexDirection = FlexDirection.Row;
+                container.style.alignItems = Align.Center;
+
+                var bar = new ProgressBar();
+                bar.value = ToPercent(rawValue, handle.Metadata.Min, handle.Metadata.Max);
+                bar.style.flexGrow = 1;
+                bar.AddToClassList("compact-progress");
+
+                var valueLabel = new Label(ValueFormatter.FormatValue(rawValue));
+                valueLabel.AddToClassList("stat-value");
+                valueLabel.style.marginLeft = 8;
+
+                container.Add(bar);
+                container.Add(valueLabel);
+                root.Add(container);
+
+                binding.ProgressControl = bar;
+                binding.ValueLabel = valueLabel;
+                break;
+            }
+
+            case MonitorWidgetType.Progress:
+            {
+                var container = new VisualElement();
+                container.style.flexDirection = FlexDirection.Row;
+                container.style.alignItems = Align.Center;
+
+                var bar = new ProgressBar();
+                bar.value = ToPercent(rawValue, handle.Metadata.Min, handle.Metadata.Max);
+                bar.style.flexGrow = 1;
+                bar.AddToClassList("compact-progress");
+
+                var valueLabel = new Label(ValueFormatter.FormatValue(rawValue));
+                valueLabel.AddToClassList("stat-value");
+                valueLabel.style.marginLeft = 8;
+
+                container.Add(bar);
+                container.Add(valueLabel);
+                root.Add(container);
+
+                binding.ProgressControl = bar;
+                binding.ValueLabel = valueLabel;
+                break;
+            }
+
+            case MonitorWidgetType.InputValue:
+            case MonitorWidgetType.Value:
+            default:
+            {
+                var valueLabel = new Label(ValueFormatter.FormatValue(rawValue));
+                valueLabel.AddToClassList("stat-value");
+                root.Add(valueLabel);
+
+                binding.ValueLabel = valueLabel;
+                break;
+            }
+        }
+
+        binding.WidgetRoot = root;
+        return root;
     }
 
     private void ApplyBoxOverrides(VisualElement box, VisualElement statsContainer, MonitorBoxOverrides boxOverrides)
@@ -338,11 +429,37 @@ public class MonitorPanelView : MonoBehaviour
     {
         foreach (var binding in rowBindings)
         {
-            if (binding == null || binding.Handle == null || binding.ValueLabel == null)
+            if (binding == null || binding.Handle == null || binding.KeyLabel == null)
                 continue;
 
             binding.KeyLabel.text = binding.Handle.Name + ":";
-            binding.ValueLabel.text = binding.Handle.GetValueString();
+
+            var rawValue = binding.Handle.GetValueRaw();
+
+            switch (binding.Handle.Metadata.WidgetType)
+            {
+                case MonitorWidgetType.Toggle:
+                    if (binding.ToggleControl != null)
+                        binding.ToggleControl.SetValueWithoutNotify(ToBool(rawValue));
+                    break;
+
+                case MonitorWidgetType.Slider:
+                case MonitorWidgetType.Progress:
+                    if (binding.ProgressControl != null)
+                    {
+                        binding.ProgressControl.value = ToPercent(rawValue, binding.Handle.Metadata.Min, binding.Handle.Metadata.Max);
+                        if (binding.ValueLabel != null)
+                            binding.ValueLabel.text = ValueFormatter.FormatValue(rawValue);
+                    }
+                    break;
+
+                case MonitorWidgetType.InputValue:
+                case MonitorWidgetType.Value:
+                default:
+                    if (binding.ValueLabel != null)
+                        binding.ValueLabel.text = ValueFormatter.FormatValue(rawValue);
+                    break;
+            }
         }
     }
 
@@ -387,6 +504,36 @@ public class MonitorPanelView : MonoBehaviour
             uiDocument.panelSettings = panelSettings.panelSettings;
 
         ApplyPanelStyleSheet();
+
+        // register for root size changes so we can adjust box widths responsively
+        var root = uiDocument.rootVisualElement;
+        root.RegisterCallback<GeometryChangedEvent>(OnRootGeometryChanged);
+        // apply initial sizing
+        UpdateResponsiveLayout(root.layout.width);
+    }
+
+    private void OnRootGeometryChanged(GeometryChangedEvent evt)
+    {
+        UpdateResponsiveLayout(evt.newRect.width);
+    }
+
+    private void UpdateResponsiveLayout(float rootWidth)
+    {
+        if (rootWidth <= 0f)
+            return;
+
+        var desired = Mathf.Clamp(rootWidth * responsiveBoxFraction, responsiveBoxMinPx, responsiveBoxMaxPx);
+
+        foreach (var kv in targetToBoxMap)
+        {
+            var box = kv.Value;
+            if (box == null)
+                continue;
+
+            box.style.width = desired;
+            box.style.minWidth = desired;
+            box.style.maxWidth = desired;
+        }
     }
 
     private void ApplyPanelStyleSheet()
@@ -414,10 +561,61 @@ public class MonitorPanelView : MonoBehaviour
         return settings;
     }
 
+    #region UTILS
+
+    private static bool ToBool(object rawValue)
+    {
+        try
+        {
+            return rawValue != null && Convert.ToBoolean(rawValue);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static float ToPercent(object rawValue, float min, float max)
+    {
+        if (!TryGetFloat(rawValue, out var numericValue))
+            return 0f;
+
+        if (Mathf.Approximately(min, max))
+            return 0f;
+
+        var normalized = Mathf.InverseLerp(min, max, numericValue);
+        return Mathf.Clamp01(normalized) * 100f;
+    }
+
+    private static bool TryGetFloat(object rawValue, out float value)
+    {
+        try
+        {
+            if (rawValue == null)
+            {
+                value = 0f;
+                return false;
+            }
+
+            value = Convert.ToSingle(rawValue);
+            return true;
+        }
+        catch
+        {
+            value = 0f;
+            return false;
+        }
+    }
+
+    #endregion
+
     private sealed class RowBinding
     {
         public IMonitorHandle Handle;
-        public Label ValueLabel;
         public Label KeyLabel;
+        public Label ValueLabel;
+        public Toggle ToggleControl;
+        public ProgressBar ProgressControl;
+        public VisualElement WidgetRoot;
     }
 }

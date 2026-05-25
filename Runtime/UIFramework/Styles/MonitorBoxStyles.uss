@@ -4,9 +4,8 @@
     border-radius: 10px;
     border-width: 1px;
     border-color: #1e1e1e; /* Bright blue border */
-    margin: 2px;
+    margin: 0px;
     padding: 6px;
-    width: 25%;
 }
 
 /* Style for the box's header text */
@@ -24,7 +23,7 @@
     justify-content: space-between;
     align-items: center;
     margin: 0px;
-    border-width: 1px;
+    border-width: 0px;
     padding: 0px;
 }
 
@@ -39,9 +38,15 @@
 /* Style for the value label on the right */
 .stat-value {
     color: #F9FAFB; /* Soft white value text */
-    font-size: 8px;
+    font-size: 9px;
     -unity-font-style: bold;
-    padding: 0;
+    padding: 2px 6px;
+    background-color: rgba(255,255,255,0.06);
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: rgba(0,0,0,0.35);
+    min-width: 56px;
+    -unity-text-align: right;
 }
 
 /* Header row layout to hold both the Title and the Toggle Button */
@@ -85,4 +90,65 @@
     opacity: 0;
     padding-top: 0px;
     padding-bottom: 0px;
+}
+
+.stat-widget {
+    flex-grow: 1;
+}
+
+.stat-widget--toggle {
+    justify-content: center;
+}
+
+.stat-widget--slider,
+.stat-widget--progress {
+    min-width: 140px;
+}
+
+/* Progress bar adjustments to look compact inside rows */
+.stat-widget ProgressBar,
+.stat-widget .unity-progress-bar {
+    height: 12px;
+    margin-left: 0px;
+    margin-right: 0px;
+    border-radius: 6px;
+}
+
+.compact-progress,
+.compact-progress .unity-progress-bar {
+    height: 14px;
+    min-width: 80px;
+}
+
+/* Remove default paddings/margins from controls inside stat rows to make them tight */
+.stat-row Toggle,
+.stat-row ProgressBar,
+.stat-row TextField,
+.stat-row IntegerField,
+.stat-row FloatField,
+.stat-row Label {
+    margin: 0px;
+    padding: 0px;
+    min-width: 0px;
+}
+
+/* Engine-specific class fallbacks */
+.stat-row .unity-toggle,
+.stat-row .unity-progress-bar,
+.stat-row .unity-text-input {
+    margin: 0px;
+    padding: 0px;
+}
+
+/* Emulate gap for older Unity versions by applying right-margin to children */
+.stat-row > * {
+    margin-right: 6px;
+}
+.stat-row > *:last-child {
+    margin-right: 0px;
+}
+
+/* Slightly more spacing between label and widget */
+.stat-label {
+    margin-right: 8px;
 }

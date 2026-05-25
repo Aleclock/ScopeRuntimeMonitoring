@@ -109,3 +109,4 @@ InitTestScene*.unity*
 # Custom
 
 .DS_Store
+Docs/*
