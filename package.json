@@ -5,6 +5,10 @@
   "unity": "2021.3",
   "description": "Runtime monitoring UI toolkit for debugging variables and components.",
   "keywords": ["debug","monitoring","runtime","ui"],
-  "author": { "name": "AC Project" },
-  "dependencies": {}
+  "author": { 
+    "name": "AC Project" 
+  },
+  "dependencies": {
+    "com.acproject.prettylog": "0.1.0"
+  }
 }
