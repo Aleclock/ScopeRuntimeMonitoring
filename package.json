@@ -10,5 +10,12 @@
   },
   "dependencies": {
     "com.acproject.prettylog": "0.1.0"
-  }
+  },
+  "samples": [
+    {
+      "displayName": "Runtime Monitoring Demo",
+      "description": "A demo scene with MonitoredExample and RandomMonitorTest demonstrating auto-ui-creation and visual widget variety.",
+      "path": "Samples~"
+    }
+  ]
 }

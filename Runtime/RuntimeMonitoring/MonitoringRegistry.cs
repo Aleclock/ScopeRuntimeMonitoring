@@ -18,7 +18,8 @@ public class MonitoringRegistry
 
     public bool RegisterTarget(object target)
     {
-        if (target == null) return false;
+        if (MonitoringHelper.IsDestroyed(target)) 
+            return false;
 
         lock (_sync)
         {
@@ -31,15 +32,16 @@ public class MonitoringRegistry
         DiscoverFields(target, handles);
         DiscoverProperties(target, handles);
 
-        if (handles.Count > 0)
+        lock (_sync)
         {
             _targetHandles[target] = handles;
-            _handles.AddRange(handles);
-            return true;
+            if (handles.Count > 0)
+            {
+                _handles.AddRange(handles);
+                return true;
+            }
+            return false;
         }
-
-        _targetHandles[target] = handles;
-        return false;
     }
 
     private void DiscoverFields(object target, List<IMonitorHandle> destination)
@@ -74,7 +76,8 @@ public class MonitoringRegistry
 
     public void UnregisterTarget(object target)
     {
-        if (target == null) return;
+        if (MonitoringHelper.IsDestroyed(target))
+            return;
 
         lock (_sync)
         {

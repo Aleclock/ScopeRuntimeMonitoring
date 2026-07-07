@@ -1,10 +1,13 @@
 using System.Collections.Generic;
 using System.Diagnostics;
+using System;
+using UnityEngine;
 
 public static class Monitor
 {
     public static MonitoringRegistry Registry { get; private set; }
-    public static event System.Action<object> TargetRegistered;
+    public static event Action<object> TargetRegistered;
+    public static event Action<object> TargetUnregistered;
 
     static Monitor()
     {
@@ -22,5 +25,6 @@ public static class Monitor
     public static void StopMonitoring(object target)
     {
         Registry.UnregisterTarget(target);
+        TargetUnregistered?.Invoke(target);
     }
 }

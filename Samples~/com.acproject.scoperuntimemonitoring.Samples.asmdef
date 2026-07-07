@@ -1,0 +1,13 @@
+{
+  "name": "ScopeRuntimeMonitoring.Samples",
+  "rootNamespace": "ScopeRuntimeMonitoring",
+  "references": [
+    "ScopeRuntimeMonitoring.Runtime"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true
+}

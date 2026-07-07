@@ -35,6 +35,7 @@ public class MonitorPanelView : MonoBehaviour
 
         resolvedConfig = MonitorPanelConfigResolver.Resolve(panelSettings, overrides);
 
+        Monitor.TargetUnregistered += OnTargetUnregistered;
         Monitor.TargetRegistered += OnTargetRegistered;
 
         EnsureUIExists();
@@ -45,6 +46,10 @@ public class MonitorPanelView : MonoBehaviour
     private void OnDisable()
     {
         Monitor.TargetRegistered -= OnTargetRegistered;
+        Monitor.TargetUnregistered -= OnTargetUnregistered;
+
+        rowBindings.Clear();
+        targetToBoxMap.Clear();
     }
 
     private void OnTargetRegistered(object target)
@@ -52,6 +57,24 @@ public class MonitorPanelView : MonoBehaviour
         EnsureUIExists();
         EnsureColumnContainer();
         AddBoxForTarget(target);
+    }
+
+    private void OnTargetUnregistered(object target)
+    {
+        if (target == null)
+            return;
+        
+        if (targetToBoxMap.TryGetValue(target, out var boxElement))
+        {
+            // Remove the box element from the hierarchy
+            if (boxElement.parent != null)
+                boxElement.parent.Remove(boxElement);
+            
+            targetToBoxMap.Remove(target);
+        }
+
+        // Clean up row bindings referencing this target
+        rowBindings.RemoveAll(binding => ReferenceEquals(binding.Handle.Target, target));
     }
 
     private void BuildInitialLayoutFromExistingTargets()
@@ -427,14 +450,30 @@ public class MonitorPanelView : MonoBehaviour
 
     private void RefreshMonitoredValues()
     {
+        // 1. Prune any rows associated with targets that were destroyed at runtime
+        for (int i = rowBindings.Count - 1; i >= 0; i--)
+        {
+            var binding = rowBindings[i];
+            if (binding == null || MonitoringHelper.IsDestroyed(binding.Handle.Target))
+            {
+                if (binding != null && binding.Handle != null)
+                    OnTargetUnregistered(binding.Handle.Target);
+            }
+        }
+
+        // 2. Refresh active values only when changed
         foreach (var binding in rowBindings)
         {
             if (binding == null || binding.Handle == null || binding.KeyLabel == null)
                 continue;
 
-            binding.KeyLabel.text = binding.Handle.Name + ":";
-
             var rawValue = binding.Handle.GetValueRaw();
+            
+            // Avoid updates and formatting allocations if the value remains unchanged
+            if (Equals(binding.LastValue, rawValue))
+                continue;
+
+            binding.LastValue = rawValue;
 
             switch (binding.Handle.Metadata.WidgetType)
             {
@@ -617,5 +656,6 @@ public class MonitorPanelView : MonoBehaviour
         public Toggle ToggleControl;
         public ProgressBar ProgressControl;
         public VisualElement WidgetRoot;
+        public object LastValue;
     }
 }
