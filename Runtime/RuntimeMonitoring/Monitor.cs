@@ -7,6 +7,7 @@ namespace ScopeRuntimeMonitoring
     {
         public static MonitoringRegistry Registry { get; private set; }
         public static event System.Action<object> TargetRegistered;
+        public static event System.Action<object> TargetUnregistered;
 
         static Monitor()
         {
@@ -24,6 +25,7 @@ namespace ScopeRuntimeMonitoring
         public static void StopMonitoring(object target)
         {
             Registry.UnregisterTarget(target);
+            TargetUnregistered?.Invoke(target);
         }
     }
 }
