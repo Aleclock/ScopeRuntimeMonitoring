@@ -4,658 +4,661 @@ using System;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-public class MonitorPanelView : MonoBehaviour
+namespace ScopeRuntimeMonitoring
 {
-    [Header("Shared Defaults")]
-    [SerializeField] private MonitorPanelSettings panelSettings;
-
-    [Header("Optional Per-Panel Overrides")]
-    [SerializeField] private MonitorPanelOverrides overrides;
-
-    private readonly List<RowBinding> rowBindings = new List<RowBinding>();
-    private readonly Dictionary<object, VisualElement> targetToBoxMap = new Dictionary<object, VisualElement>();
-
-    private UIDocument uiDocument;
-    private MonitorPanelConfig resolvedConfig;
-
-    // Responsive layout settings
-    private float responsiveBoxMinPx = 160f;
-    private float responsiveBoxMaxPx = 340f;
-    private float responsiveBoxFraction = 0.22f; // fraction of root width for box size
-
-    private VisualElement columnContainer;
-    private readonly Dictionary<MonitorPanelAnchor, VisualElement> singlePanelAnchorContainers = new Dictionary<MonitorPanelAnchor, VisualElement>();
-
-    private void OnEnable()
+    public class MonitorPanelView : MonoBehaviour
     {
-        panelSettings ??= LoadDefaultPanelSettings();
+        [Header("Shared Defaults")]
+        [SerializeField] private MonitorPanelSettings panelSettings;
 
-        rowBindings.Clear();
-        targetToBoxMap.Clear();
+        [Header("Optional Per-Panel Overrides")]
+        [SerializeField] private MonitorPanelOverrides overrides;
 
-        resolvedConfig = MonitorPanelConfigResolver.Resolve(panelSettings, overrides);
+        private readonly List<RowBinding> rowBindings = new List<RowBinding>();
+        private readonly Dictionary<object, VisualElement> targetToBoxMap = new Dictionary<object, VisualElement>();
 
-        Monitor.TargetUnregistered += OnTargetUnregistered;
-        Monitor.TargetRegistered += OnTargetRegistered;
+        private UIDocument uiDocument;
+        private MonitorPanelConfig resolvedConfig;
 
-        EnsureUIExists();
-        ApplyPanelStyleSheet();
-        BuildInitialLayoutFromExistingTargets();
-    }
+        // Responsive layout settings
+        private float responsiveBoxMinPx = 160f;
+        private float responsiveBoxMaxPx = 340f;
+        private float responsiveBoxFraction = 0.22f; // fraction of root width for box size
 
-    private void OnDisable()
-    {
-        Monitor.TargetRegistered -= OnTargetRegistered;
-        Monitor.TargetUnregistered -= OnTargetUnregistered;
+        private VisualElement columnContainer;
+        private readonly Dictionary<MonitorPanelAnchor, VisualElement> singlePanelAnchorContainers = new Dictionary<MonitorPanelAnchor, VisualElement>();
 
-        rowBindings.Clear();
-        targetToBoxMap.Clear();
-    }
-
-    private void OnTargetRegistered(object target)
-    {
-        EnsureUIExists();
-        EnsureColumnContainer();
-        AddBoxForTarget(target);
-    }
-
-    private void OnTargetUnregistered(object target)
-    {
-        if (target == null)
-            return;
-        
-        if (targetToBoxMap.TryGetValue(target, out var boxElement))
+        private void OnEnable()
         {
-            // Remove the box element from the hierarchy
-            if (boxElement.parent != null)
-                boxElement.parent.Remove(boxElement);
-            
-            targetToBoxMap.Remove(target);
+            panelSettings ??= LoadDefaultPanelSettings();
+
+            rowBindings.Clear();
+            targetToBoxMap.Clear();
+
+            resolvedConfig = MonitorPanelConfigResolver.Resolve(panelSettings, overrides);
+
+            Monitor.TargetUnregistered += OnTargetUnregistered;
+            Monitor.TargetRegistered += OnTargetRegistered;
+
+            EnsureUIExists();
+            ApplyPanelStyleSheet();
+            BuildInitialLayoutFromExistingTargets();
         }
 
-        // Clean up row bindings referencing this target
-        rowBindings.RemoveAll(binding => ReferenceEquals(binding.Handle.Target, target));
-    }
+        private void OnDisable()
+        {
+            Monitor.TargetRegistered -= OnTargetRegistered;
+            Monitor.TargetUnregistered -= OnTargetUnregistered;
 
-    private void BuildInitialLayoutFromExistingTargets()
-    {
-        EnsureColumnContainer();
+            rowBindings.Clear();
+            targetToBoxMap.Clear();
+        }
 
-        var allHandles = Monitor.Registry.GetMonitorHandles();
-        var existingTargets = allHandles
-            .Select(handle => handle.Target)
-            .Where(target => target != null)
-            .Distinct()
-            .ToList();
-
-        foreach (var target in existingTargets)
+        private void OnTargetRegistered(object target)
+        {
+            EnsureUIExists();
+            EnsureColumnContainer();
             AddBoxForTarget(target);
-    }
-
-    private void EnsureColumnContainer()
-    {
-        if (columnContainer != null)
-            return;
-
-        columnContainer = new VisualElement();
-        columnContainer.style.height = Length.Percent(100);
-        columnContainer.style.width = Length.Percent(100);
-        columnContainer.style.backgroundColor = Color.clear;
-        columnContainer.style.paddingTop = resolvedConfig.Padding;
-        columnContainer.style.paddingBottom = resolvedConfig.Padding;
-        columnContainer.style.paddingLeft = resolvedConfig.Padding;
-        columnContainer.style.paddingRight = resolvedConfig.Padding;
-        columnContainer.pickingMode = PickingMode.Ignore;
-
-        ApplyLayoutAnchor(resolvedConfig.Anchor);
-
-        var root = uiDocument.rootVisualElement;
-        if (!root.Contains(columnContainer))
-            root.Add(columnContainer);
-
-        EnsureSinglePanelAnchorContainers();
-    }
-
-    private void EnsureSinglePanelAnchorContainers()
-    {
-        if (GetActivePanelCount() > 1)
-            return;
-
-        if (singlePanelAnchorContainers.Count > 0)
-            return;
-
-        CreateSinglePanelAnchorContainer(MonitorPanelAnchor.TopLeft, Justify.FlexStart, Align.FlexStart);
-        CreateSinglePanelAnchorContainer(MonitorPanelAnchor.TopRight, Justify.FlexStart, Align.FlexEnd);
-        CreateSinglePanelAnchorContainer(MonitorPanelAnchor.BottomLeft, Justify.FlexEnd, Align.FlexStart);
-        CreateSinglePanelAnchorContainer(MonitorPanelAnchor.BottomRight, Justify.FlexEnd, Align.FlexEnd);
-    }
-
-    private void CreateSinglePanelAnchorContainer(MonitorPanelAnchor anchor, Justify justify, Align align)
-    {
-        var anchorContainer = new VisualElement();
-        anchorContainer.style.position = Position.Absolute;
-        anchorContainer.style.left = 0f;
-        anchorContainer.style.right = 0f;
-        anchorContainer.style.top = 0f;
-        anchorContainer.style.bottom = 0f;
-        anchorContainer.style.flexDirection = FlexDirection.Column;
-        anchorContainer.style.justifyContent = justify;
-        anchorContainer.style.alignItems = align;
-        anchorContainer.style.paddingTop = resolvedConfig.Padding;
-        anchorContainer.style.paddingBottom = resolvedConfig.Padding;
-        anchorContainer.style.paddingLeft = resolvedConfig.Padding;
-        anchorContainer.style.paddingRight = resolvedConfig.Padding;
-        anchorContainer.pickingMode = PickingMode.Ignore;
-
-        singlePanelAnchorContainers[anchor] = anchorContainer;
-        columnContainer.Add(anchorContainer);
-    }
-
-    private string GetDisplayNameForTarget(object target)
-    {
-        if (target == null)
-            return "Unknown";
-
-        if (target is Component component && component.gameObject != null)
-            return component.gameObject.name;
-
-        return target.GetType().Name;
-    }
-
-    private void AddBoxForTarget(object target)
-    {
-        if (target == null)
-            return;
-
-        if (targetToBoxMap.ContainsKey(target))
-            return;
-
-        if (!TryResolveBoxOverrides(target, out var boxOverrides))
-            return;
-
-        if (!IsBoxAllowedForThisPanel(boxOverrides))
-            return;
-
-        var targetAnchor = ResolveBoxAnchor(boxOverrides);
-
-        var allHandles = new List<IMonitorHandle>(Monitor.Registry.GetMonitorHandles());
-        var handlesForTarget = allHandles.Where(handle => ReferenceEquals(handle.Target, target)).ToList();
-
-        if (handlesForTarget.Count == 0)
-            return;
-
-        var title = GetDisplayNameForTarget(target);
-        var boxElement = CreateUITKBoxForInstance(target, title, handlesForTarget, boxOverrides);
-
-        targetToBoxMap[target] = boxElement;
-
-        if (GetActivePanelCount() <= 1 && singlePanelAnchorContainers.TryGetValue(targetAnchor, out var anchorContainer))
-            anchorContainer.Add(boxElement);
-        else
-            columnContainer.Add(boxElement);
-    }
-
-    private bool TryResolveBoxOverrides(object target, out MonitorBoxOverrides boxOverrides)
-    {
-        boxOverrides = null;
-
-        if (target is not Component component)
-            return true;
-        
-        boxOverrides = component.GetComponent<MonitorBoxOverrides>();
-        return true;
-    }
-
-    private bool IsBoxAllowedForThisPanel(MonitorBoxOverrides boxOverrides)
-    {
-        // In single-panel mode, show all enabled boxes regardless of routing anchor.
-        // This keeps the default experience intuitive when users have only one runtime panel.
-        if (GetActivePanelCount() <= 1)
-        {
-            return boxOverrides == null || boxOverrides.EnableRuntimeBox;
         }
 
-        var boxAnchor = ResolveBoxAnchor(boxOverrides);
-
-        if (boxOverrides != null && !boxOverrides.EnableRuntimeBox)
-            return false;
-
-        return boxAnchor == resolvedConfig.Anchor;
-    }
-
-    private MonitorPanelAnchor ResolveBoxAnchor(MonitorBoxOverrides boxOverrides)
-    {
-        var defaultAnchor = panelSettings != null
-            ? panelSettings.defaultAnchor
-            : MonitorPanelAnchor.TopLeft;
-
-        if (boxOverrides == null)
-            return defaultAnchor;
-
-        return boxOverrides.OverrideAnchor ? boxOverrides.Anchor : defaultAnchor;
-    }
-
-    private static int GetActivePanelCount()
-    {
-        return FindObjectsOfType<MonitorPanelView>().Length;
-    }
-
-    private VisualElement CreateUITKBoxForInstance(object target, string title, IReadOnlyList<IMonitorHandle> handles, MonitorBoxOverrides boxOverrides)
-    {
-        var box = new VisualElement();
-        box.AddToClassList("custom-box");
-        box.pickingMode = PickingMode.Position;
-
-        var headerRow = new VisualElement();
-        headerRow.AddToClassList("box-header-row");
-
-        var titleLabel = new Label(title);
-        titleLabel.AddToClassList("box-header");
-        headerRow.Add(titleLabel);
-
-        var toggleButton = new Button() { text = "−" };
-        toggleButton.AddToClassList("collapse-btn");
-        headerRow.Add(toggleButton);
-
-        box.Add(headerRow);
-
-        var statsContainer = new VisualElement();
-        statsContainer.AddToClassList("stats-content-holder");
-        statsContainer.pickingMode = PickingMode.Ignore;
-
-        foreach (var handle in handles)
+        private void OnTargetUnregistered(object target)
         {
-            var rowContainer = new VisualElement();
-            rowContainer.AddToClassList("stat-row");
-
-            var keyLabel = new Label(handle.Name + ":");
-            keyLabel.AddToClassList("stat-label");
-
-            var binding = new RowBinding
+            if (target == null)
+                return;
+            
+            if (targetToBoxMap.TryGetValue(target, out var boxElement))
             {
-                Handle = handle,
-                KeyLabel = keyLabel
+                // Remove the box element from the hierarchy
+                if (boxElement.parent != null)
+                    boxElement.parent.Remove(boxElement);
+                
+                targetToBoxMap.Remove(target);
+            }
+
+            // Clean up row bindings referencing this target
+            rowBindings.RemoveAll(binding => ReferenceEquals(binding.Handle.Target, target));
+        }
+
+        private void BuildInitialLayoutFromExistingTargets()
+        {
+            EnsureColumnContainer();
+
+            var allHandles = Monitor.Registry.GetMonitorHandles();
+            var existingTargets = allHandles
+                .Select(handle => handle.Target)
+                .Where(target => target != null)
+                .Distinct()
+                .ToList();
+
+            foreach (var target in existingTargets)
+                AddBoxForTarget(target);
+        }
+
+        private void EnsureColumnContainer()
+        {
+            if (columnContainer != null)
+                return;
+
+            columnContainer = new VisualElement();
+            columnContainer.style.height = Length.Percent(100);
+            columnContainer.style.width = Length.Percent(100);
+            columnContainer.style.backgroundColor = Color.clear;
+            columnContainer.style.paddingTop = resolvedConfig.Padding;
+            columnContainer.style.paddingBottom = resolvedConfig.Padding;
+            columnContainer.style.paddingLeft = resolvedConfig.Padding;
+            columnContainer.style.paddingRight = resolvedConfig.Padding;
+            columnContainer.pickingMode = PickingMode.Ignore;
+
+            ApplyLayoutAnchor(resolvedConfig.Anchor);
+
+            var root = uiDocument.rootVisualElement;
+            if (!root.Contains(columnContainer))
+                root.Add(columnContainer);
+
+            EnsureSinglePanelAnchorContainers();
+        }
+
+        private void EnsureSinglePanelAnchorContainers()
+        {
+            if (GetActivePanelCount() > 1)
+                return;
+
+            if (singlePanelAnchorContainers.Count > 0)
+                return;
+
+            CreateSinglePanelAnchorContainer(MonitorPanelAnchor.TopLeft, Justify.FlexStart, Align.FlexStart);
+            CreateSinglePanelAnchorContainer(MonitorPanelAnchor.TopRight, Justify.FlexStart, Align.FlexEnd);
+            CreateSinglePanelAnchorContainer(MonitorPanelAnchor.BottomLeft, Justify.FlexEnd, Align.FlexStart);
+            CreateSinglePanelAnchorContainer(MonitorPanelAnchor.BottomRight, Justify.FlexEnd, Align.FlexEnd);
+        }
+
+        private void CreateSinglePanelAnchorContainer(MonitorPanelAnchor anchor, Justify justify, Align align)
+        {
+            var anchorContainer = new VisualElement();
+            anchorContainer.style.position = Position.Absolute;
+            anchorContainer.style.left = 0f;
+            anchorContainer.style.right = 0f;
+            anchorContainer.style.top = 0f;
+            anchorContainer.style.bottom = 0f;
+            anchorContainer.style.flexDirection = FlexDirection.Column;
+            anchorContainer.style.justifyContent = justify;
+            anchorContainer.style.alignItems = align;
+            anchorContainer.style.paddingTop = resolvedConfig.Padding;
+            anchorContainer.style.paddingBottom = resolvedConfig.Padding;
+            anchorContainer.style.paddingLeft = resolvedConfig.Padding;
+            anchorContainer.style.paddingRight = resolvedConfig.Padding;
+            anchorContainer.pickingMode = PickingMode.Ignore;
+
+            singlePanelAnchorContainers[anchor] = anchorContainer;
+            columnContainer.Add(anchorContainer);
+        }
+
+        private string GetDisplayNameForTarget(object target)
+        {
+            if (target == null)
+                return "Unknown";
+
+            if (target is Component component && component.gameObject != null)
+                return component.gameObject.name;
+
+            return target.GetType().Name;
+        }
+
+        private void AddBoxForTarget(object target)
+        {
+            if (target == null)
+                return;
+
+            if (targetToBoxMap.ContainsKey(target))
+                return;
+
+            if (!TryResolveBoxOverrides(target, out var boxOverrides))
+                return;
+
+            if (!IsBoxAllowedForThisPanel(boxOverrides))
+                return;
+
+            var targetAnchor = ResolveBoxAnchor(boxOverrides);
+
+            var allHandles = new List<IMonitorHandle>(Monitor.Registry.GetMonitorHandles());
+            var handlesForTarget = allHandles.Where(handle => ReferenceEquals(handle.Target, target)).ToList();
+
+            if (handlesForTarget.Count == 0)
+                return;
+
+            var title = GetDisplayNameForTarget(target);
+            var boxElement = CreateUITKBoxForInstance(target, title, handlesForTarget, boxOverrides);
+
+            targetToBoxMap[target] = boxElement;
+
+            if (GetActivePanelCount() <= 1 && singlePanelAnchorContainers.TryGetValue(targetAnchor, out var anchorContainer))
+                anchorContainer.Add(boxElement);
+            else
+                columnContainer.Add(boxElement);
+        }
+
+        private bool TryResolveBoxOverrides(object target, out MonitorBoxOverrides boxOverrides)
+        {
+            boxOverrides = null;
+
+            if (target is not Component component)
+                return true;
+            
+            boxOverrides = component.GetComponent<MonitorBoxOverrides>();
+            return true;
+        }
+
+        private bool IsBoxAllowedForThisPanel(MonitorBoxOverrides boxOverrides)
+        {
+            // In single-panel mode, show all enabled boxes regardless of routing anchor.
+            // This keeps the default experience intuitive when users have only one runtime panel.
+            if (GetActivePanelCount() <= 1)
+            {
+                return boxOverrides == null || boxOverrides.EnableRuntimeBox;
+            }
+
+            var boxAnchor = ResolveBoxAnchor(boxOverrides);
+
+            if (boxOverrides != null && !boxOverrides.EnableRuntimeBox)
+                return false;
+
+            return boxAnchor == resolvedConfig.Anchor;
+        }
+
+        private MonitorPanelAnchor ResolveBoxAnchor(MonitorBoxOverrides boxOverrides)
+        {
+            var defaultAnchor = panelSettings != null
+                ? panelSettings.defaultAnchor
+                : MonitorPanelAnchor.TopLeft;
+
+            if (boxOverrides == null)
+                return defaultAnchor;
+
+            return boxOverrides.OverrideAnchor ? boxOverrides.Anchor : defaultAnchor;
+        }
+
+        private static int GetActivePanelCount()
+        {
+            return FindObjectsOfType<MonitorPanelView>().Length;
+        }
+
+        private VisualElement CreateUITKBoxForInstance(object target, string title, IReadOnlyList<IMonitorHandle> handles, MonitorBoxOverrides boxOverrides)
+        {
+            var box = new VisualElement();
+            box.AddToClassList("custom-box");
+            box.pickingMode = PickingMode.Position;
+
+            var headerRow = new VisualElement();
+            headerRow.AddToClassList("box-header-row");
+
+            var titleLabel = new Label(title);
+            titleLabel.AddToClassList("box-header");
+            headerRow.Add(titleLabel);
+
+            var toggleButton = new Button() { text = "−" };
+            toggleButton.AddToClassList("collapse-btn");
+            headerRow.Add(toggleButton);
+
+            box.Add(headerRow);
+
+            var statsContainer = new VisualElement();
+            statsContainer.AddToClassList("stats-content-holder");
+            statsContainer.pickingMode = PickingMode.Ignore;
+
+            foreach (var handle in handles)
+            {
+                var rowContainer = new VisualElement();
+                rowContainer.AddToClassList("stat-row");
+
+                var keyLabel = new Label(handle.Name + ":");
+                keyLabel.AddToClassList("stat-label");
+
+                var binding = new RowBinding
+                {
+                    Handle = handle,
+                    KeyLabel = keyLabel
+                };
+
+                var widgetRoot = CreateWidgetRoot(handle, binding);
+                rowContainer.Add(keyLabel);
+                rowContainer.Add(widgetRoot);
+                statsContainer.Add(rowContainer);
+
+                rowBindings.Add(binding);
+            }
+
+            ApplyBoxOverrides(box, statsContainer, boxOverrides);
+
+            toggleButton.clicked += () =>
+            {
+                statsContainer.ToggleInClassList("stats-content-holder--collapsed");
+                toggleButton.text = statsContainer.ClassListContains("stats-content-holder--collapsed") ? "+" : "−";
             };
 
-            var widgetRoot = CreateWidgetRoot(handle, binding);
-            rowContainer.Add(keyLabel);
-            rowContainer.Add(widgetRoot);
-            statsContainer.Add(rowContainer);
-
-            rowBindings.Add(binding);
+            box.Add(statsContainer);
+            return box;
         }
 
-        ApplyBoxOverrides(box, statsContainer, boxOverrides);
-
-        toggleButton.clicked += () =>
+        private VisualElement CreateWidgetRoot(IMonitorHandle handle, RowBinding binding)
         {
-            statsContainer.ToggleInClassList("stats-content-holder--collapsed");
-            toggleButton.text = statsContainer.ClassListContains("stats-content-holder--collapsed") ? "+" : "−";
-        };
+            var root = new VisualElement();
+            root.AddToClassList("stat-widget");
+            root.AddToClassList($"stat-widget--{handle.Metadata.WidgetType.ToString().ToLowerInvariant()}");
 
-        box.Add(statsContainer);
-        return box;
-    }
+            var rawValue = handle.GetValueRaw();
 
-    private VisualElement CreateWidgetRoot(IMonitorHandle handle, RowBinding binding)
-    {
-        var root = new VisualElement();
-        root.AddToClassList("stat-widget");
-        root.AddToClassList($"stat-widget--{handle.Metadata.WidgetType.ToString().ToLowerInvariant()}");
-
-        var rawValue = handle.GetValueRaw();
-
-        switch (handle.Metadata.WidgetType)
-        {
-            case MonitorWidgetType.Toggle:
-            {
-                var toggle = new Toggle();
-                toggle.SetEnabled(false);
-                toggle.value = ToBool(rawValue);
-                root.Add(toggle);
-
-                binding.ToggleControl = toggle;
-                break;
-            }
-
-            case MonitorWidgetType.Slider:
-            {
-                var container = new VisualElement();
-                container.style.flexDirection = FlexDirection.Row;
-                container.style.alignItems = Align.Center;
-
-                var bar = new ProgressBar();
-                bar.value = ToPercent(rawValue, handle.Metadata.Min, handle.Metadata.Max);
-                bar.style.flexGrow = 1;
-                bar.AddToClassList("compact-progress");
-
-                var valueLabel = new Label(ValueFormatter.FormatValue(rawValue));
-                valueLabel.AddToClassList("stat-value");
-                valueLabel.style.marginLeft = 8;
-
-                container.Add(bar);
-                container.Add(valueLabel);
-                root.Add(container);
-
-                binding.ProgressControl = bar;
-                binding.ValueLabel = valueLabel;
-                break;
-            }
-
-            case MonitorWidgetType.Progress:
-            {
-                var container = new VisualElement();
-                container.style.flexDirection = FlexDirection.Row;
-                container.style.alignItems = Align.Center;
-
-                var bar = new ProgressBar();
-                bar.value = ToPercent(rawValue, handle.Metadata.Min, handle.Metadata.Max);
-                bar.style.flexGrow = 1;
-                bar.AddToClassList("compact-progress");
-
-                var valueLabel = new Label(ValueFormatter.FormatValue(rawValue));
-                valueLabel.AddToClassList("stat-value");
-                valueLabel.style.marginLeft = 8;
-
-                container.Add(bar);
-                container.Add(valueLabel);
-                root.Add(container);
-
-                binding.ProgressControl = bar;
-                binding.ValueLabel = valueLabel;
-                break;
-            }
-
-            case MonitorWidgetType.InputValue:
-            case MonitorWidgetType.Value:
-            default:
-            {
-                var valueLabel = new Label(ValueFormatter.FormatValue(rawValue));
-                valueLabel.AddToClassList("stat-value");
-                root.Add(valueLabel);
-
-                binding.ValueLabel = valueLabel;
-                break;
-            }
-        }
-
-        binding.WidgetRoot = root;
-        return root;
-    }
-
-    private void ApplyBoxOverrides(VisualElement box, VisualElement statsContainer, MonitorBoxOverrides boxOverrides)
-    {
-        if (boxOverrides == null)
-            return;
-
-        if (boxOverrides.OverrideBoxStyleSheet && boxOverrides.BoxStyleSheet != null && !box.styleSheets.Contains(boxOverrides.BoxStyleSheet))
-        {
-            box.styleSheets.Add(boxOverrides.BoxStyleSheet);
-        }
-
-        if (boxOverrides.OverridePanelWidth)
-        {
-            box.style.width = boxOverrides.PanelWidth;
-            box.style.minWidth = boxOverrides.PanelWidth;
-        }
-
-        if (boxOverrides.OverridePanelHeight)
-        {
-            box.style.height = boxOverrides.PanelHeight;
-            box.style.minHeight = boxOverrides.PanelHeight;
-        }
-
-        if (boxOverrides.OverrideFontSize || boxOverrides.OverrideRowHeight || boxOverrides.OverrideRowSpacing)
-        {
-            foreach (var row in statsContainer.Children())
-            {
-                if (row == null)
-                    continue;
-
-                if (boxOverrides.OverrideRowHeight)
-                    row.style.height = boxOverrides.RowHeight;
-
-                if (boxOverrides.OverrideRowSpacing)
-                    row.style.marginBottom = boxOverrides.RowSpacing;
-
-                if (boxOverrides.OverrideFontSize)
-                {
-                    foreach (var child in row.Children())
-                    {
-                        if (child is Label label)
-                            label.style.fontSize = boxOverrides.FontSize;
-                    }
-                }
-            }
-        }
-
-        if (boxOverrides.OverrideFontSize)
-        {
-            foreach (var child in box.Children())
-            {
-                if (child is Label label)
-                    label.style.fontSize = boxOverrides.FontSize;
-            }
-        }
-    }
-
-    private void Update()
-    {
-        if (resolvedConfig.PanelSettings == null)
-            return;
-
-        ApplyLayoutAnchor(resolvedConfig.Anchor);
-        RefreshMonitoredValues();
-    }
-
-    private void RefreshMonitoredValues()
-    {
-        // 1. Prune any rows associated with targets that were destroyed at runtime
-        for (int i = rowBindings.Count - 1; i >= 0; i--)
-        {
-            var binding = rowBindings[i];
-            if (binding == null || MonitoringHelper.IsDestroyed(binding.Handle.Target))
-            {
-                if (binding != null && binding.Handle != null)
-                    OnTargetUnregistered(binding.Handle.Target);
-            }
-        }
-
-        // 2. Refresh active values only when changed
-        foreach (var binding in rowBindings)
-        {
-            if (binding == null || binding.Handle == null || binding.KeyLabel == null)
-                continue;
-
-            var rawValue = binding.Handle.GetValueRaw();
-            
-            // Avoid updates and formatting allocations if the value remains unchanged
-            if (Equals(binding.LastValue, rawValue))
-                continue;
-
-            binding.LastValue = rawValue;
-
-            switch (binding.Handle.Metadata.WidgetType)
+            switch (handle.Metadata.WidgetType)
             {
                 case MonitorWidgetType.Toggle:
-                    if (binding.ToggleControl != null)
-                        binding.ToggleControl.SetValueWithoutNotify(ToBool(rawValue));
+                {
+                    var toggle = new Toggle();
+                    toggle.SetEnabled(false);
+                    toggle.value = ToBool(rawValue);
+                    root.Add(toggle);
+
+                    binding.ToggleControl = toggle;
                     break;
+                }
 
                 case MonitorWidgetType.Slider:
-                case MonitorWidgetType.Progress:
-                    if (binding.ProgressControl != null)
-                    {
-                        binding.ProgressControl.value = ToPercent(rawValue, binding.Handle.Metadata.Min, binding.Handle.Metadata.Max);
-                        if (binding.ValueLabel != null)
-                            binding.ValueLabel.text = ValueFormatter.FormatValue(rawValue);
-                    }
+                {
+                    var container = new VisualElement();
+                    container.style.flexDirection = FlexDirection.Row;
+                    container.style.alignItems = Align.Center;
+
+                    var bar = new ProgressBar();
+                    bar.value = ToPercent(rawValue, handle.Metadata.Min, handle.Metadata.Max);
+                    bar.style.flexGrow = 1;
+                    bar.AddToClassList("compact-progress");
+
+                    var valueLabel = new Label(ValueFormatter.FormatValue(rawValue));
+                    valueLabel.AddToClassList("stat-value");
+                    valueLabel.style.marginLeft = 8;
+
+                    container.Add(bar);
+                    container.Add(valueLabel);
+                    root.Add(container);
+
+                    binding.ProgressControl = bar;
+                    binding.ValueLabel = valueLabel;
                     break;
+                }
+
+                case MonitorWidgetType.Progress:
+                {
+                    var container = new VisualElement();
+                    container.style.flexDirection = FlexDirection.Row;
+                    container.style.alignItems = Align.Center;
+
+                    var bar = new ProgressBar();
+                    bar.value = ToPercent(rawValue, handle.Metadata.Min, handle.Metadata.Max);
+                    bar.style.flexGrow = 1;
+                    bar.AddToClassList("compact-progress");
+
+                    var valueLabel = new Label(ValueFormatter.FormatValue(rawValue));
+                    valueLabel.AddToClassList("stat-value");
+                    valueLabel.style.marginLeft = 8;
+
+                    container.Add(bar);
+                    container.Add(valueLabel);
+                    root.Add(container);
+
+                    binding.ProgressControl = bar;
+                    binding.ValueLabel = valueLabel;
+                    break;
+                }
 
                 case MonitorWidgetType.InputValue:
                 case MonitorWidgetType.Value:
                 default:
-                    if (binding.ValueLabel != null)
-                        binding.ValueLabel.text = ValueFormatter.FormatValue(rawValue);
+                {
+                    var valueLabel = new Label(ValueFormatter.FormatValue(rawValue));
+                    valueLabel.AddToClassList("stat-value");
+                    root.Add(valueLabel);
+
+                    binding.ValueLabel = valueLabel;
+                    break;
+                }
+            }
+
+            binding.WidgetRoot = root;
+            return root;
+        }
+
+        private void ApplyBoxOverrides(VisualElement box, VisualElement statsContainer, MonitorBoxOverrides boxOverrides)
+        {
+            if (boxOverrides == null)
+                return;
+
+            if (boxOverrides.OverrideBoxStyleSheet && boxOverrides.BoxStyleSheet != null && !box.styleSheets.Contains(boxOverrides.BoxStyleSheet))
+            {
+                box.styleSheets.Add(boxOverrides.BoxStyleSheet);
+            }
+
+            if (boxOverrides.OverridePanelWidth)
+            {
+                box.style.width = boxOverrides.PanelWidth;
+                box.style.minWidth = boxOverrides.PanelWidth;
+            }
+
+            if (boxOverrides.OverridePanelHeight)
+            {
+                box.style.height = boxOverrides.PanelHeight;
+                box.style.minHeight = boxOverrides.PanelHeight;
+            }
+
+            if (boxOverrides.OverrideFontSize || boxOverrides.OverrideRowHeight || boxOverrides.OverrideRowSpacing)
+            {
+                foreach (var row in statsContainer.Children())
+                {
+                    if (row == null)
+                        continue;
+
+                    if (boxOverrides.OverrideRowHeight)
+                        row.style.height = boxOverrides.RowHeight;
+
+                    if (boxOverrides.OverrideRowSpacing)
+                        row.style.marginBottom = boxOverrides.RowSpacing;
+
+                    if (boxOverrides.OverrideFontSize)
+                    {
+                        foreach (var child in row.Children())
+                        {
+                            if (child is Label label)
+                                label.style.fontSize = boxOverrides.FontSize;
+                        }
+                    }
+                }
+            }
+
+            if (boxOverrides.OverrideFontSize)
+            {
+                foreach (var child in box.Children())
+                {
+                    if (child is Label label)
+                        label.style.fontSize = boxOverrides.FontSize;
+                }
+            }
+        }
+
+        private void Update()
+        {
+            if (resolvedConfig.PanelSettings == null)
+                return;
+
+            ApplyLayoutAnchor(resolvedConfig.Anchor);
+            RefreshMonitoredValues();
+        }
+
+        private void RefreshMonitoredValues()
+        {
+            // 1. Prune any rows associated with targets that were destroyed at runtime
+            for (int i = rowBindings.Count - 1; i >= 0; i--)
+            {
+                var binding = rowBindings[i];
+                if (binding == null || MonitoringHelper.IsDestroyed(binding.Handle.Target))
+                {
+                    if (binding != null && binding.Handle != null)
+                        OnTargetUnregistered(binding.Handle.Target);
+                }
+            }
+
+            // 2. Refresh active values only when changed
+            foreach (var binding in rowBindings)
+            {
+                if (binding == null || binding.Handle == null || binding.KeyLabel == null)
+                    continue;
+
+                var rawValue = binding.Handle.GetValueRaw();
+                
+                // Avoid updates and formatting allocations if the value remains unchanged
+                if (Equals(binding.LastValue, rawValue))
+                    continue;
+
+                binding.LastValue = rawValue;
+
+                switch (binding.Handle.Metadata.WidgetType)
+                {
+                    case MonitorWidgetType.Toggle:
+                        if (binding.ToggleControl != null)
+                            binding.ToggleControl.SetValueWithoutNotify(ToBool(rawValue));
+                        break;
+
+                    case MonitorWidgetType.Slider:
+                    case MonitorWidgetType.Progress:
+                        if (binding.ProgressControl != null)
+                        {
+                            binding.ProgressControl.value = ToPercent(rawValue, binding.Handle.Metadata.Min, binding.Handle.Metadata.Max);
+                            if (binding.ValueLabel != null)
+                                binding.ValueLabel.text = ValueFormatter.FormatValue(rawValue);
+                        }
+                        break;
+
+                    case MonitorWidgetType.InputValue:
+                    case MonitorWidgetType.Value:
+                    default:
+                        if (binding.ValueLabel != null)
+                            binding.ValueLabel.text = ValueFormatter.FormatValue(rawValue);
+                        break;
+                }
+            }
+        }
+
+        private void ApplyLayoutAnchor(MonitorPanelAnchor anchor)
+        {
+            if (columnContainer == null) return;
+
+            columnContainer.style.flexDirection = FlexDirection.Column;
+            columnContainer.style.justifyContent = Justify.FlexStart;
+            columnContainer.style.alignItems = Align.FlexStart;
+
+            switch (anchor)
+            {
+                case MonitorPanelAnchor.TopLeft:
+                    columnContainer.style.justifyContent = Justify.FlexStart;
+                    columnContainer.style.alignItems = Align.FlexStart;
+                    break;
+                case MonitorPanelAnchor.TopRight:
+                    columnContainer.style.justifyContent = Justify.FlexStart;
+                    columnContainer.style.alignItems = Align.FlexEnd;
+                    break;
+                case MonitorPanelAnchor.BottomLeft:
+                    columnContainer.style.justifyContent = Justify.FlexEnd;
+                    columnContainer.style.alignItems = Align.FlexStart;
+                    break;
+                case MonitorPanelAnchor.BottomRight:
+                    columnContainer.style.justifyContent = Justify.FlexEnd;
+                    columnContainer.style.alignItems = Align.FlexEnd;
                     break;
             }
         }
-    }
 
-    private void ApplyLayoutAnchor(MonitorPanelAnchor anchor)
-    {
-        if (columnContainer == null) return;
-
-        columnContainer.style.flexDirection = FlexDirection.Column;
-        columnContainer.style.justifyContent = Justify.FlexStart;
-        columnContainer.style.alignItems = Align.FlexStart;
-
-        switch (anchor)
+        private void EnsureUIExists()
         {
-            case MonitorPanelAnchor.TopLeft:
-                columnContainer.style.justifyContent = Justify.FlexStart;
-                columnContainer.style.alignItems = Align.FlexStart;
-                break;
-            case MonitorPanelAnchor.TopRight:
-                columnContainer.style.justifyContent = Justify.FlexStart;
-                columnContainer.style.alignItems = Align.FlexEnd;
-                break;
-            case MonitorPanelAnchor.BottomLeft:
-                columnContainer.style.justifyContent = Justify.FlexEnd;
-                columnContainer.style.alignItems = Align.FlexStart;
-                break;
-            case MonitorPanelAnchor.BottomRight:
-                columnContainer.style.justifyContent = Justify.FlexEnd;
-                columnContainer.style.alignItems = Align.FlexEnd;
-                break;
-        }
-    }
+            if (uiDocument == null)
+            {
+                if (!TryGetComponent(out uiDocument))
+                    uiDocument = gameObject.AddComponent<UIDocument>();
+            }
 
-    private void EnsureUIExists()
-    {
-        if (uiDocument == null)
-        {
-            if (!TryGetComponent(out uiDocument))
-                uiDocument = gameObject.AddComponent<UIDocument>();
+            if (uiDocument.panelSettings == null && panelSettings != null)
+                uiDocument.panelSettings = panelSettings.panelSettings;
+
+            ApplyPanelStyleSheet();
+
+            // register for root size changes so we can adjust box widths responsively
+            var root = uiDocument.rootVisualElement;
+            root.RegisterCallback<GeometryChangedEvent>(OnRootGeometryChanged);
+            // apply initial sizing
+            UpdateResponsiveLayout(root.layout.width);
         }
 
-        if (uiDocument.panelSettings == null && panelSettings != null)
-            uiDocument.panelSettings = panelSettings.panelSettings;
-
-        ApplyPanelStyleSheet();
-
-        // register for root size changes so we can adjust box widths responsively
-        var root = uiDocument.rootVisualElement;
-        root.RegisterCallback<GeometryChangedEvent>(OnRootGeometryChanged);
-        // apply initial sizing
-        UpdateResponsiveLayout(root.layout.width);
-    }
-
-    private void OnRootGeometryChanged(GeometryChangedEvent evt)
-    {
-        UpdateResponsiveLayout(evt.newRect.width);
-    }
-
-    private void UpdateResponsiveLayout(float rootWidth)
-    {
-        if (rootWidth <= 0f)
-            return;
-
-        var desired = Mathf.Clamp(rootWidth * responsiveBoxFraction, responsiveBoxMinPx, responsiveBoxMaxPx);
-
-        foreach (var kv in targetToBoxMap)
+        private void OnRootGeometryChanged(GeometryChangedEvent evt)
         {
-            var box = kv.Value;
-            if (box == null)
-                continue;
-
-            box.style.width = desired;
-            box.style.minWidth = desired;
-            box.style.maxWidth = desired;
-        }
-    }
-
-    private void ApplyPanelStyleSheet()
-    {
-        if (uiDocument == null)
-            return;
-
-        var root = uiDocument.rootVisualElement;
-        if (root == null)
-            return;
-
-        if (resolvedConfig.BoxStyleSheet != null && !root.styleSheets.Contains(resolvedConfig.BoxStyleSheet))
-            root.styleSheets.Add(resolvedConfig.BoxStyleSheet);
-    }
-
-    private static MonitorPanelSettings LoadDefaultPanelSettings()
-    {
-        var settings = Resources.Load<MonitorPanelSettings>("Defaults/MonitorPanelSettings");
-
-        if (settings == null)
-        {
-            Debug.LogWarning("MonitorPanelView: could not load default MonitorPanelSettings from Resources/Defaults/MonitorPanelSettings.");
+            UpdateResponsiveLayout(evt.newRect.width);
         }
 
-        return settings;
-    }
-
-    #region UTILS
-
-    private static bool ToBool(object rawValue)
-    {
-        try
+        private void UpdateResponsiveLayout(float rootWidth)
         {
-            return rawValue != null && Convert.ToBoolean(rawValue);
+            if (rootWidth <= 0f)
+                return;
+
+            var desired = Mathf.Clamp(rootWidth * responsiveBoxFraction, responsiveBoxMinPx, responsiveBoxMaxPx);
+
+            foreach (var kv in targetToBoxMap)
+            {
+                var box = kv.Value;
+                if (box == null)
+                    continue;
+
+                box.style.width = desired;
+                box.style.minWidth = desired;
+                box.style.maxWidth = desired;
+            }
         }
-        catch
+
+        private void ApplyPanelStyleSheet()
         {
-            return false;
+            if (uiDocument == null)
+                return;
+
+            var root = uiDocument.rootVisualElement;
+            if (root == null)
+                return;
+
+            if (resolvedConfig.BoxStyleSheet != null && !root.styleSheets.Contains(resolvedConfig.BoxStyleSheet))
+                root.styleSheets.Add(resolvedConfig.BoxStyleSheet);
         }
-    }
 
-    private static float ToPercent(object rawValue, float min, float max)
-    {
-        if (!TryGetFloat(rawValue, out var numericValue))
-            return 0f;
-
-        if (Mathf.Approximately(min, max))
-            return 0f;
-
-        var normalized = Mathf.InverseLerp(min, max, numericValue);
-        return Mathf.Clamp01(normalized) * 100f;
-    }
-
-    private static bool TryGetFloat(object rawValue, out float value)
-    {
-        try
+        private static MonitorPanelSettings LoadDefaultPanelSettings()
         {
-            if (rawValue == null)
+            var settings = Resources.Load<MonitorPanelSettings>("Defaults/MonitorPanelSettings");
+
+            if (settings == null)
+            {
+                Debug.LogWarning("MonitorPanelView: could not load default MonitorPanelSettings from Resources/Defaults/MonitorPanelSettings.");
+            }
+
+            return settings;
+        }
+
+        #region UTILS
+
+        private static bool ToBool(object rawValue)
+        {
+            try
+            {
+                return rawValue != null && Convert.ToBoolean(rawValue);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static float ToPercent(object rawValue, float min, float max)
+        {
+            if (!TryGetFloat(rawValue, out var numericValue))
+                return 0f;
+
+            if (Mathf.Approximately(min, max))
+                return 0f;
+
+            var normalized = Mathf.InverseLerp(min, max, numericValue);
+            return Mathf.Clamp01(normalized) * 100f;
+        }
+
+        private static bool TryGetFloat(object rawValue, out float value)
+        {
+            try
+            {
+                if (rawValue == null)
+                {
+                    value = 0f;
+                    return false;
+                }
+
+                value = Convert.ToSingle(rawValue);
+                return true;
+            }
+            catch
             {
                 value = 0f;
                 return false;
             }
-
-            value = Convert.ToSingle(rawValue);
-            return true;
         }
-        catch
+
+        #endregion
+
+        private sealed class RowBinding
         {
-            value = 0f;
-            return false;
+            public IMonitorHandle Handle;
+            public Label KeyLabel;
+            public Label ValueLabel;
+            public Toggle ToggleControl;
+            public ProgressBar ProgressControl;
+            public VisualElement WidgetRoot;
+            public object LastValue;
         }
-    }
-
-    #endregion
-
-    private sealed class RowBinding
-    {
-        public IMonitorHandle Handle;
-        public Label KeyLabel;
-        public Label ValueLabel;
-        public Toggle ToggleControl;
-        public ProgressBar ProgressControl;
-        public VisualElement WidgetRoot;
-        public object LastValue;
     }
 }

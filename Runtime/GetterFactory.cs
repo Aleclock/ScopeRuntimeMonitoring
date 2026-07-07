@@ -1,15 +1,12 @@
 using System;
-using System.Reflection;
-#if UNITY_EDITOR || !ENABLE_IL2CPP
 using System.Linq.Expressions;
-#endif
+using System.Reflection;
 
-public static class GetterFactory
+namespace ScopeRuntimeMonitoring
 {
-    public static Func<object, object> CreateGetter(FieldInfo fieldInfo)
+    public static class GetterFactory
     {
-#if UNITY_EDITOR || !ENABLE_IL2CPP
-        try
+        public static Func<object, object> CreateGetter(FieldInfo fieldInfo)
         {
             var instanceParam = Expression.Parameter(typeof(object), "target");
             var castInstance = Expression.Convert(instanceParam, fieldInfo.DeclaringType);
@@ -18,20 +15,8 @@ public static class GetterFactory
             var lambda = Expression.Lambda<Func<object, object>>(convertResult, instanceParam);
             return lambda.Compile();
         }
-        catch
-        {
-            // Fall back to reflection if compilation fails
-            return target => fieldInfo.GetValue(target);
-        }
-#else
-        return target => fieldInfo.GetValue(target);
-#endif
-    }
 
-    public static Func<object, object> CreateGetter(PropertyInfo propertyInfo)
-    {
-#if UNITY_EDITOR || !ENABLE_IL2CPP
-        try
+        public static Func<object, object> CreateGetter(PropertyInfo propertyInfo)
         {
             var instanceParam = Expression.Parameter(typeof(object), "target");
             var castInstance = Expression.Convert(instanceParam, propertyInfo.DeclaringType);
@@ -40,13 +25,5 @@ public static class GetterFactory
             var lambda = Expression.Lambda<Func<object, object>>(convertResult, instanceParam);
             return lambda.Compile();
         }
-        catch
-        {
-            // Fall back to reflection if compilation fails
-            return target => propertyInfo.GetValue(target);
-        }
-#else
-        return target => propertyInfo.GetValue(target);
-#endif
     }
 }

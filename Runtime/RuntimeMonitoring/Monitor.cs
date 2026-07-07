@@ -1,30 +1,29 @@
 using System.Collections.Generic;
 using System.Diagnostics;
-using System;
-using UnityEngine;
 
-public static class Monitor
+namespace ScopeRuntimeMonitoring
 {
-    public static MonitoringRegistry Registry { get; private set; }
-    public static event Action<object> TargetRegistered;
-    public static event Action<object> TargetUnregistered;
-
-    static Monitor()
+    public static class Monitor
     {
-        Registry = new MonitoringRegistry();
-        MonitorUIService.EnsureSubscribed();
-    }
+        public static MonitoringRegistry Registry { get; private set; }
+        public static event System.Action<object> TargetRegistered;
 
-    public static void StartMonitoring(object target)
-    {
-        bool added = Registry.RegisterTarget(target);
-        if (added)
-            TargetRegistered?.Invoke(target);
-    }
+        static Monitor()
+        {
+            Registry = new MonitoringRegistry();
+            MonitorUIService.EnsureSubscribed();
+        }
 
-    public static void StopMonitoring(object target)
-    {
-        Registry.UnregisterTarget(target);
-        TargetUnregistered?.Invoke(target);
+        public static void StartMonitoring(object target)
+        {
+            bool added = Registry.RegisterTarget(target);
+            if (added)
+                TargetRegistered?.Invoke(target);
+        }
+
+        public static void StopMonitoring(object target)
+        {
+            Registry.UnregisterTarget(target);
+        }
     }
 }

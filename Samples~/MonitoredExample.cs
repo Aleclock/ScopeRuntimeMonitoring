@@ -1,4 +1,5 @@
 using UnityEngine;
+using ScopeRuntimeMonitoring;
 
 public class MonitoredExample : MonoBehaviour
 {

@@ -1,9 +1,12 @@
-public enum MonitorWidgetType
+namespace ScopeRuntimeMonitoring
 {
-    Value,
-    Toggle,
-    Slider,
-    InputValue,
-    Progress,
-    Custom
+    public enum MonitorWidgetType
+    {
+        Value,
+        Toggle,
+        Slider,
+        InputValue,
+        Progress,
+        Custom
+    }
 }

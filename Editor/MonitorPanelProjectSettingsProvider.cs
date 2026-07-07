@@ -2,47 +2,49 @@
 
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Rendering;
 
-static class MonitorPanelProjectSettingsProvider
+namespace ScopeRuntimeMonitoring
 {
-    private const string ResourcePath = "Defaults/MonitorPanelSettings";
-
-    [SettingsProvider]
-    public static SettingsProvider CreateProvider()
+    static class MonitorPanelProjectSettingsProvider
     {
-        return new SettingsProvider("Project/Scope Runtime Monitoring", SettingsScope.Project)
-        {
-            guiHandler = DrawSettings,
-            keywords = new[] { "scope", "runtime", "monitor", "panel", "theme", "stylesheet", "ui toolkit" }
-        };
-    }
+        private const string ResourcePath = "Defaults/MonitorPanelSettings";
 
-    private static void DrawSettings(string searchContext)
-    {
-        MonitorPanelSettings settings = LoadSettings();
-        
-        if (settings == null)
+        [SettingsProvider]
+        public static SettingsProvider CreateProvider()
         {
-            EditorGUILayout.HelpBox("Could not load the package default MonitorPanelSettings asset.", MessageType.Error);
-            return;
+            return new SettingsProvider("Project/Scope Runtime Monitoring", SettingsScope.Project)
+            {
+                guiHandler = DrawSettings,
+                keywords = new[] { "scope", "runtime", "monitor", "panel", "theme", "stylesheet", "ui toolkit" }
+            };
         }
 
-        Editor editor = Editor.CreateEditor(settings);
-
-        try
+        private static void DrawSettings(string searchContext)
         {
-            editor.OnInspectorGUI();
-        }
-        finally
-        {
-            Object.DestroyImmediate(editor);
-        }
-    }
+            MonitorPanelSettings settings = LoadSettings();
+            
+            if (settings == null)
+            {
+                EditorGUILayout.HelpBox("Could not load the package default MonitorPanelSettings asset.", MessageType.Error);
+                return;
+            }
 
-    private static MonitorPanelSettings LoadSettings()
-    {
-        return Resources.Load<MonitorPanelSettings>(ResourcePath);
+            Editor editor = Editor.CreateEditor(settings);
+
+            try
+            {
+                editor.OnInspectorGUI();
+            }
+            finally
+            {
+                Object.DestroyImmediate(editor);
+            }
+        }
+
+        private static MonitorPanelSettings LoadSettings()
+        {
+            return Resources.Load<MonitorPanelSettings>(ResourcePath);
+        }
     }
 }
 #endif
