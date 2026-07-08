@@ -13,7 +13,7 @@ namespace ScopeRuntimeMonitoring
         [Header("Runtime Defaults")]
         public bool enableRuntimeMonitoring = true; // toggle runtime monitoring for the project
         public MonitorPanelAnchor defaultAnchor = MonitorPanelAnchor.TopLeft;
-        [Min(0.05f)] public float defaultUpdateInterval = 0.5f;
+        [Min(0f)] public float defaultUpdateInterval = 0.5f;
         [Min(0f)] public float defaultPadding = 15f;
         // TODO Add default margin?
 

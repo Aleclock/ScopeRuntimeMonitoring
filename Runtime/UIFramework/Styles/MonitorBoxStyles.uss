@@ -1,87 +1,75 @@
 /* Style for the outer box container */
 .custom-box {
-    background-color: rgba(31, 41, 55, 0.9);
-    border-radius: 10px;
+    background-color: #202124;
+    border-radius: 8px;
     border-width: 1px;
-    border-color: #1e1e1e; /* Bright blue border */
-    margin: 0px;
-    padding: 6px;
-}
-
-/* Style for the box's header text */
-.box-header {
-    color: #FBBF24; /* Warm amber/yellow */
-    font-size: 10px;
-    -unity-font-style: bold;
-    margin-bottom: 4px;
-    letter-spacing: 1px;
-}
-
-/* Style for the horizontal row wrapper */
-.stat-row {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    margin: 0px;
-    border-width: 0px;
+    border-color: #2d2f34;
+    margin-top: 2px;
+    margin-left: 2px;
+    margin-right: 2px;
     padding: 0px;
-}
-
-/* Style for the static label on the left */
-.stat-label {
-    color: #9CA3AF; /* Light gray text */
-    font-size: 8px;
-    margin: 0px;
-    padding: 0px;
-}
-
-/* Style for the value label on the right */
-.stat-value {
-    color: #F9FAFB; /* Soft white value text */
-    font-size: 9px;
-    -unity-font-style: bold;
-    padding: 2px 6px;
-    background-color: rgba(255,255,255,0.06);
-    border-radius: 6px;
-    border-width: 1px;
-    border-color: rgba(0,0,0,0.35);
-    min-width: 56px;
-    -unity-text-align: right;
+    width: 30%;
+    min-width: 160px;
+    max-width: 320px;
+    overflow: hidden;
 }
 
 /* Header row layout to hold both the Title and the Toggle Button */
 .box-header-row {
+    background-color: #2a2b2f;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    padding-left: 14px;
+    padding-right: 14px;
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 4px;
+    border-bottom-width: 1px;
+    border-color: #1a1b1e;
+}
+
+/* Style for the box's header text */
+.box-header {
+    color: #b0b5bc;
+    font-size: 12px;
+    -unity-font-style: bold;
+    margin: 0px;
+    padding: 0px;
 }
 
 /* Style for the collapse toggle button */
 .collapse-btn {
-    background-color: #374151;
-    color: white;
-    border-radius: 4px;
+    background-color: transparent;
     border-width: 0px;
-    padding: 2px 8px;
+    border-radius: 4px;
+    color: #cbd2dc;
+    opacity: 0.6;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    padding-left: 6px;
+    padding-right: 6px;
     font-size: 11px;
+    margin: 0px;
 }
 
 .collapse-btn:hover {
-    background-color: #4B5563; /* Subtle highlight on hover */
+    opacity: 1.0;
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 /* The base state for our stats sub-container */
 .stats-content-holder {
-    /* 1. Tell Unity WHICH properties to animate and HOW LONG they should take */
+    padding: 12px;
+    flex-direction: column;
+    
+    /* Transition animation values */
     transition-property: max-height, opacity, padding-top, padding-bottom;
     transition-duration: 0.3s, 0.2s, 0.3s, 0.3s;
     transition-timing-function: ease-out-cubic;
 
-    /* 2. Set the default expanded values */
-    max-height: 300px; /* Give it a safe maximum limit larger than your tallest content */
+    max-height: 500px;
     opacity: 1;
-    overflow: hidden; /* Crucial: stops text from clipping through while shrinking */
+    overflow: hidden;
 }
 
 /* The state applied when the box is collapsed */
@@ -92,63 +80,109 @@
     padding-bottom: 0px;
 }
 
+/* Style for the horizontal row wrapper */
+.stat-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 4px;
+    padding: 0px;
+}
+
+/* Style for the static label on the left */
+.stat-label {
+    width: 30%;
+    flex-shrink: 0;
+    color: #9298a0;
+    font-size: 11px;
+    margin: 0px;
+    padding: 0px;
+}
+
+/* Style for the widget container on the right */
 .stat-widget {
     flex-grow: 1;
+    flex-direction: row;
+    align-items: center;
 }
 
 .stat-widget--toggle {
-    justify-content: center;
+    justify-content: flex-start;
 }
 
-.stat-widget--slider,
-.stat-widget--progress {
-    min-width: 140px;
+/* Style for the value label */
+.stat-value {
+    background-color: #2d2f34;
+    color: #cbd2dc;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    border-width: 0px;
+    width: 100%;
+    height: 22px;
+    -unity-text-align: middle-right;
+    flex-grow: 1;
+    margin: 0px;
 }
 
-/* Progress bar adjustments to look compact inside rows */
+/* Adjustments for progress / slider value display */
+.stat-widget--slider .stat-value,
+.stat-widget--progress .stat-value {
+    -unity-text-align: middle-right;
+    width: 52px;
+    height: 22px;
+    margin-left: 10px;
+    flex-grow: 0;
+}
+
+/* Progress bar styling to look like a thin range slider */
 .stat-widget ProgressBar,
 .stat-widget .unity-progress-bar {
     height: 12px;
-    margin-left: 0px;
-    margin-right: 0px;
-    border-radius: 6px;
+    flex-grow: 1;
+    margin: 0px;
+    padding: 0px;
+    background-color: transparent;
+    border-width: 0px;
 }
 
-.compact-progress,
-.compact-progress .unity-progress-bar {
-    height: 14px;
-    min-width: 80px;
+.stat-widget .unity-progress-bar__background {
+    background-color: #3e424a;
+    border-radius: 2px;
+    border-width: 0px;
+    height: 4px;
 }
 
-/* Remove default paddings/margins from controls inside stat rows to make them tight */
+.stat-widget .unity-progress-bar__progress {
+    background-color: #3b71f7;
+    border-radius: 2px;
+    height: 4px;
+}
+
+/* Engine default overrides to clear margin/padding inside rows */
 .stat-row Toggle,
-.stat-row ProgressBar,
-.stat-row TextField,
-.stat-row IntegerField,
-.stat-row FloatField,
-.stat-row Label {
+.stat-row ProgressBar {
     margin: 0px;
     padding: 0px;
-    min-width: 0px;
 }
 
-/* Engine-specific class fallbacks */
 .stat-row .unity-toggle,
-.stat-row .unity-progress-bar,
-.stat-row .unity-text-input {
+.stat-row .unity-progress-bar {
     margin: 0px;
     padding: 0px;
 }
 
-/* Emulate gap for older Unity versions by applying right-margin to children */
-.stat-row > * {
-    margin-right: 6px;
-}
-.stat-row > *:last-child {
-    margin-right: 0px;
+/* Styled toggle checkmark */
+.unity-toggle__checkmark {
+    background-color: #2d2f34;
+    border-width: 0px;
+    border-radius: 4px;
+    width: 16px;
+    height: 16px;
 }
 
-/* Slightly more spacing between label and widget */
-.stat-label {
-    margin-right: 8px;
+.unity-toggle__checkmark:checked {
+    background-color: #3b71f7;
 }

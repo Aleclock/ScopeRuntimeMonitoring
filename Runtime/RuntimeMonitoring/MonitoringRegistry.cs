@@ -55,7 +55,9 @@ namespace ScopeRuntimeMonitoring
                 if (attribute == null || !attribute.Enabled)
                     continue;
 
-                destination.Add(new FieldMonitorHandle(target, field, attribute));
+                var genericType = typeof(FieldMonitorHandle<,>).MakeGenericType(type, field.FieldType);
+                var handle = (IMonitorHandle)Activator.CreateInstance(genericType, target, field, attribute);
+                destination.Add(handle);
             }
         }
 
@@ -70,7 +72,9 @@ namespace ScopeRuntimeMonitoring
                 if (attribute == null || !attribute.Enabled)
                     continue;
 
-                destination.Add(new PropertyMonitorHandle(target, property, attribute));
+                var genericType = typeof(PropertyMonitorHandle<,>).MakeGenericType(type, property.PropertyType);
+                var handle = (IMonitorHandle)Activator.CreateInstance(genericType, target, property, attribute);
+                destination.Add(handle);
             }
         }
 

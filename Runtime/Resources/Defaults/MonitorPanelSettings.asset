@@ -16,7 +16,7 @@ MonoBehaviour:
   boxStyleSheet: {fileID: 7433441132597879392, guid: b5cc9105f1580499a8dd1eaefdc0ac15, type: 3}
   enableRuntimeMonitoring: 1
   defaultAnchor: 0
-  defaultUpdateInterval: 0.5
+  defaultUpdateInterval: 1
   defaultPadding: 0
   defaultPanelWidth: 430
   defaultPanelHeight: 280

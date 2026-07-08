@@ -17,7 +17,7 @@ namespace ScopeRuntimeMonitoring
         [SerializeField] private PanelSettings panelSettings;
         [SerializeField] private StyleSheet boxStyleSheet;
         [SerializeField] private MonitorPanelAnchor anchor = MonitorPanelAnchor.TopLeft;
-        [SerializeField, Min(0.05f)] private float updateInterval = 1f;
+        [SerializeField, Min(0f)] private float updateInterval = 1f;
         [SerializeField, Min(0f)] private float padding = 15f;
 
         public bool EnableRuntimePanel => enableRuntimePanel;

@@ -27,6 +27,8 @@ namespace ScopeRuntimeMonitoring
 
         private VisualElement columnContainer;
         private readonly Dictionary<MonitorPanelAnchor, VisualElement> singlePanelAnchorContainers = new Dictionary<MonitorPanelAnchor, VisualElement>();
+        private MonitorPanelAnchor? lastAppliedAnchor = null;
+        private float lastUpdateTime = 0f;
 
         private void OnEnable()
         {
@@ -34,6 +36,8 @@ namespace ScopeRuntimeMonitoring
 
             rowBindings.Clear();
             targetToBoxMap.Clear();
+            lastAppliedAnchor = null;
+            lastUpdateTime = 0f;
 
             resolvedConfig = MonitorPanelConfigResolver.Resolve(panelSettings, overrides);
 
@@ -110,6 +114,7 @@ namespace ScopeRuntimeMonitoring
             columnContainer.pickingMode = PickingMode.Ignore;
 
             ApplyLayoutAnchor(resolvedConfig.Anchor);
+            lastAppliedAnchor = resolvedConfig.Anchor;
 
             var root = uiDocument.rootVisualElement;
             if (!root.Contains(columnContainer))
@@ -446,20 +451,41 @@ namespace ScopeRuntimeMonitoring
             if (resolvedConfig.PanelSettings == null)
                 return;
 
-            ApplyLayoutAnchor(resolvedConfig.Anchor);
-            RefreshMonitoredValues();
+            if (lastAppliedAnchor != resolvedConfig.Anchor)
+            {
+                ApplyLayoutAnchor(resolvedConfig.Anchor);
+                lastAppliedAnchor = resolvedConfig.Anchor;
+            }
+
+            // Clamp update frequency to a maximum of 60Hz (0.0166s) to avoid excessive string allocations at 1000+ FPS
+            float interval = Mathf.Max(0.0166f, resolvedConfig.UpdateInterval);
+            if (Time.time - lastUpdateTime >= interval)
+            {
+                RefreshMonitoredValues();
+                lastUpdateTime = Time.time;
+            }
         }
 
         private void RefreshMonitoredValues()
         {
             // 1. Prune any rows associated with targets that were destroyed at runtime
-            for (int i = rowBindings.Count - 1; i >= 0; i--)
+            List<object> destroyedTargets = null;
+            for (int i = 0; i < rowBindings.Count; i++)
             {
                 var binding = rowBindings[i];
-                if (binding == null || MonitoringHelper.IsDestroyed(binding.Handle.Target))
+                if (binding != null && MonitoringHelper.IsDestroyed(binding.Handle.Target))
                 {
-                    if (binding != null && binding.Handle != null)
-                        OnTargetUnregistered(binding.Handle.Target);
+                    destroyedTargets ??= new List<object>();
+                    if (!destroyedTargets.Contains(binding.Handle.Target))
+                        destroyedTargets.Add(binding.Handle.Target);
+                }
+            }
+
+            if (destroyedTargets != null)
+            {
+                foreach (var target in destroyedTargets)
+                {
+                    OnTargetUnregistered(target);
                 }
             }
 
@@ -469,28 +495,28 @@ namespace ScopeRuntimeMonitoring
                 if (binding == null || binding.Handle == null || binding.KeyLabel == null)
                     continue;
 
-                var rawValue = binding.Handle.GetValueRaw();
-                
-                // Avoid updates and formatting allocations if the value remains unchanged
-                if (Equals(binding.LastValue, rawValue))
+                if (!binding.Handle.UpdateValueAndCheckIfChanged())
                     continue;
-
-                binding.LastValue = rawValue;
 
                 switch (binding.Handle.Metadata.WidgetType)
                 {
                     case MonitorWidgetType.Toggle:
                         if (binding.ToggleControl != null)
-                            binding.ToggleControl.SetValueWithoutNotify(ToBool(rawValue));
+                            binding.ToggleControl.SetValueWithoutNotify(binding.Handle.GetValueBool());
                         break;
 
                     case MonitorWidgetType.Slider:
                     case MonitorWidgetType.Progress:
                         if (binding.ProgressControl != null)
                         {
-                            binding.ProgressControl.value = ToPercent(rawValue, binding.Handle.Metadata.Min, binding.Handle.Metadata.Max);
+                            float min = binding.Handle.Metadata.Min;
+                            float max = binding.Handle.Metadata.Max;
+                            float val = binding.Handle.GetValueFloat();
+                            float percent = Mathf.Approximately(min, max) ? 0f : Mathf.Clamp01(Mathf.InverseLerp(min, max, val)) * 100f;
+                            binding.ProgressControl.value = percent;
+                            
                             if (binding.ValueLabel != null)
-                                binding.ValueLabel.text = ValueFormatter.FormatValue(rawValue);
+                                binding.ValueLabel.text = binding.Handle.GetValueString();
                         }
                         break;
 
@@ -498,7 +524,7 @@ namespace ScopeRuntimeMonitoring
                     case MonitorWidgetType.Value:
                     default:
                         if (binding.ValueLabel != null)
-                            binding.ValueLabel.text = ValueFormatter.FormatValue(rawValue);
+                            binding.ValueLabel.text = binding.Handle.GetValueString();
                         break;
                 }
             }
@@ -545,36 +571,16 @@ namespace ScopeRuntimeMonitoring
                 uiDocument.panelSettings = panelSettings.panelSettings;
 
             ApplyPanelStyleSheet();
-
-            // register for root size changes so we can adjust box widths responsively
-            var root = uiDocument.rootVisualElement;
-            root.RegisterCallback<GeometryChangedEvent>(OnRootGeometryChanged);
-            // apply initial sizing
-            UpdateResponsiveLayout(root.layout.width);
         }
 
         private void OnRootGeometryChanged(GeometryChangedEvent evt)
         {
-            UpdateResponsiveLayout(evt.newRect.width);
+            // Empty: layout is handled via USS stylesheets to maintain consistency
         }
 
         private void UpdateResponsiveLayout(float rootWidth)
         {
-            if (rootWidth <= 0f)
-                return;
-
-            var desired = Mathf.Clamp(rootWidth * responsiveBoxFraction, responsiveBoxMinPx, responsiveBoxMaxPx);
-
-            foreach (var kv in targetToBoxMap)
-            {
-                var box = kv.Value;
-                if (box == null)
-                    continue;
-
-                box.style.width = desired;
-                box.style.minWidth = desired;
-                box.style.maxWidth = desired;
-            }
+            // Empty: layout is handled via USS stylesheets to maintain consistency
         }
 
         private void ApplyPanelStyleSheet()
@@ -658,7 +664,6 @@ namespace ScopeRuntimeMonitoring
             public Toggle ToggleControl;
             public ProgressBar ProgressControl;
             public VisualElement WidgetRoot;
-            public object LastValue;
         }
     }
 }

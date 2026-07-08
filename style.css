@@ -1,0 +1,342 @@
+/* Core Styling & Reset */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto Mono', 'SF Mono', Menlo, Consolas, monospace;
+    -webkit-font-smoothing: antialiased;
+}
+
+body {
+    background-color: #121314;
+    background-image: radial-gradient(#25262b 15%, transparent 16%);
+    background-size: 16px 16px;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 30px;
+    justify-content: center;
+    width: 100%;
+    max-width: 800px;
+}
+
+/* Reusable Pane Base styles */
+.pane {
+    background-color: #202124;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 320px;
+    /* Sizing match */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    border: 1px solid #2d2f34;
+    overflow: hidden;
+    height: fit-content;
+}
+
+/* Header Styles */
+.pane-header {
+    background-color: #2a2b2f;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #b0b5bc;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #1a1b1e;
+}
+
+.pane-icon {
+    opacity: 0.5;
+    letter-spacing: -1px;
+}
+
+/* Body and Alignment Layouts */
+.pane-body {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.control-row {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    align-items: center;
+    font-size: 11px;
+    color: #9298a0;
+}
+
+/* Inputs, Text boxes, Buttons styling */
+input[type="text"],
+select {
+    background-color: #2d2f34;
+    border: none;
+    border-radius: 4px;
+    color: #d1d5db;
+    padding: 6px 10px;
+    font-size: 11px;
+    width: 100%;
+    outline: none;
+}
+
+/* Tabs UI element */
+.tabs {
+    display: flex;
+    background-color: #1a1b1e;
+    border-radius: 4px;
+    margin: 6px 0;
+    overflow: hidden;
+}
+
+.tab {
+    flex: 1;
+    text-align: center;
+    padding: 8px 0;
+    font-size: 11px;
+    font-weight: bold;
+    color: #61656d;
+    cursor: pointer;
+}
+
+.tab.active {
+    background-color: #2d2f34;
+    color: #cbd2dc;
+}
+
+/* Color Picker Inputs Customizer */
+.color-input-group {
+    display: flex;
+    background-color: #2d2f34;
+    border-radius: 4px;
+    overflow: hidden;
+    align-items: center;
+    padding-left: 6px;
+}
+
+.color-preview {
+    width: 24px;
+    height: 16px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.color-input-group input {
+    background: transparent !important;
+}
+
+/* Sliders elements customization */
+.slider-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 3px;
+    background: #3e424a;
+    border-radius: 2px;
+    outline: none;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    background: #9ca3af;
+    cursor: pointer;
+}
+
+.value-display {
+    background-color: #2d2f34;
+    color: #cbd2dc;
+    padding: 4px 6px;
+    border-radius: 4px;
+    min-width: 52px;
+    text-align: right;
+    font-size: 11px;
+}
+
+/* Multi and Matrix value grids */
+.multi-input {
+    display: flex;
+    gap: 4px;
+}
+
+.action-btn {
+    background-color: #3e424a;
+    color: #cbd2dc;
+    border: none;
+    padding: 0 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.bg-dark {
+    background-color: #1a1b1e;
+    flex: 1;
+}
+
+/* Leva UI Variant overrides */
+.leva-variant {
+    background-color: #18191c;
+    border-color: #222326;
+}
+
+.header-leva {
+    background-color: transparent;
+    border-bottom: none;
+    justify-content: space-between;
+    padding: 12px 14px 4px 14px;
+}
+
+.arrow-down {
+    font-size: 8px;
+    color: #555860;
+}
+
+.drag-dots {
+    color: #3b3d45;
+    letter-spacing: 1px;
+}
+
+.search-icon {
+    font-size: 10px;
+    opacity: 0.4;
+}
+
+.blue-variant .slider::-webkit-slider-thumb {
+    background: #3b71f7;
+}
+
+.blue-variant .slider {
+    background: #252830;
+}
+
+.numeric-box small {
+    color: #555860;
+    margin-right: 4px;
+}
+
+.font-secondary {
+    color: #a0a5ae !important;
+}
+
+.select-wrapper {
+    position: relative;
+}
+
+.select-wrapper::after {
+    content: '▼';
+    font-size: 8px;
+    color: #61656d;
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+select {
+    appearance: none;
+}
+
+.code-color-1 {
+    background-color: #ff005b;
+}
+
+.code-color-2 {
+    background-color: #f8d628;
+}
+
+.vector-group,
+.joystick-group {
+    display: flex;
+    gap: 6px;
+    width: 100%;
+}
+
+.vector-input {
+    background-color: #222326;
+    color: #a0a5ae;
+    padding: 6px 8px;
+    border-radius: 4px;
+    flex: 1;
+    font-size: 11px;
+    display: flex;
+}
+
+.dim {
+    color: #44474f;
+    margin-right: 6px;
+    font-weight: bold;
+}
+
+/* Joystick Node structure */
+.joystick-pad {
+    width: 28px;
+    height: 26px;
+    background-color: #222326;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.joystick-dot {
+    width: 4px;
+    height: 4px;
+    background-color: #3b71f7;
+    border-radius: 50%;
+}
+
+.pane-divider {
+    border: none;
+    border-top: 1px solid #222326;
+    margin: 6px 0;
+}
+
+/* Nested Folder Structure layout */
+.folder {
+    margin-top: 4px;
+}
+
+.folder-header {
+    font-size: 11px;
+    color: #e2e4e9;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.folder-content {
+    border-left: 1px solid #282a30;
+    padding-left: 10px;
+}
+
+/* Responsive adjustment for small screens */
+@media (max-width: 480px) {
+    .pane {
+        max-width: 100%;
+    }
+
+    .control-row {
+        grid-template-columns: 80px 1fr;
+    }
+}

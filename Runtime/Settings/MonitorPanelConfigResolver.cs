@@ -58,7 +58,7 @@ namespace ScopeRuntimeMonitoring
                     anchor = overrides.Anchor;
 
                 if (overrides.OverrideUpdateInterval)
-                    updateInterval = Mathf.Max(0.05f, overrides.UpdateInterval);
+                    updateInterval = Mathf.Max(0f, overrides.UpdateInterval);
 
                 if (overrides.OverridePadding)
                     padding = Mathf.Max(0f, overrides.Padding);

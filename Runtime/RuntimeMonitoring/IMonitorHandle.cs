@@ -12,5 +12,9 @@ namespace ScopeRuntimeMonitoring
         object GetValueRaw();
         string GetValueString();
         bool Enabled { get; set; }
+
+        bool UpdateValueAndCheckIfChanged();
+        bool GetValueBool();
+        float GetValueFloat();
     }
 }
