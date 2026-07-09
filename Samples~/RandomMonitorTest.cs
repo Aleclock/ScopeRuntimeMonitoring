@@ -9,16 +9,16 @@ public class RandomMonitorTest : MonoBehaviour
     [SerializeField] private string statusText = "Booting";
     [SerializeField] private Vector3 velocity = new Vector3(1f, 0f, 0f);
 
-    [MonitorSlider("Stamina", 0f, 100f, 0.5f)]
+    [MonitorSlider("Stamina", 0f, 100f, 0.5f, Group = "Combat", SubGroup = "Player")]
     public float Stamina => stamina;
 
-    [MonitorValue("Coins")]
+    [MonitorValue("Coins", Group = "Inventory")]
     public int Coins => coins;
 
-    [MonitorToggle("Shielded")]
+    [MonitorToggle("Shielded", Group = "Combat", SubGroup = "Enemy")]
     public bool Shielded => shielded;
 
-    [MonitorInputValue("Status")]
+    [MonitorInputValue("Status", Group = "Inventory", SubGroup = "Status")]
     public string StatusText => statusText;
 
     [MonitorProgress("Velocity", 0f, 20f)]

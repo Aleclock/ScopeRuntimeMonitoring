@@ -8,6 +8,7 @@ namespace ScopeRuntimeMonitoring
         public readonly string Id;
         public readonly string Label;
         public readonly string Group;
+        public readonly string SubGroup;
         public readonly string Variant;
         public readonly MonitorWidgetType WidgetType;
         public readonly bool Editable;
@@ -20,6 +21,7 @@ namespace ScopeRuntimeMonitoring
             string id,
             string label,
             string group,
+            string subGroup,
             string variant,
             MonitorWidgetType widgetType,
             bool editable,
@@ -31,6 +33,7 @@ namespace ScopeRuntimeMonitoring
             Id = id;
             Label = label;
             Group = group;
+            SubGroup = subGroup;
             Variant = variant;
             WidgetType = widgetType;
             Editable = editable;
@@ -59,6 +62,10 @@ namespace ScopeRuntimeMonitoring
                 ? attribute.Group
                 : member?.DeclaringType?.Name ?? string.Empty;
 
+            var subGroup = attribute != null && !string.IsNullOrWhiteSpace(attribute.SubGroup)
+                ? attribute.SubGroup
+                : string.Empty;
+
             var variant = attribute != null && !string.IsNullOrWhiteSpace(attribute.Variant)
                 ? attribute.Variant
                 : string.Empty;
@@ -70,7 +77,7 @@ namespace ScopeRuntimeMonitoring
             var step = attribute != null ? attribute.Step : 0.1f;
             var enabled = attribute == null || attribute.Enabled;
 
-            return new MonitorWidgetMetadata(id, label, group, variant, widgetType, editable, min, max, step, enabled);
+            return new MonitorWidgetMetadata(id, label, group, subGroup, variant, widgetType, editable, min, max, step, enabled);
         }
     }
 }

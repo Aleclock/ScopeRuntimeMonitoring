@@ -15,7 +15,8 @@ namespace ScopeRuntimeMonitoring
         [SerializeField] private MonitorPanelOverrides overrides;
 
         private readonly List<RowBinding> rowBindings = new List<RowBinding>();
-        private readonly Dictionary<object, VisualElement> targetToBoxMap = new Dictionary<object, VisualElement>();
+        private readonly Dictionary<string, VisualElement> groupToBoxMap = new Dictionary<string, VisualElement>();
+        private readonly Dictionary<string, Dictionary<string, VisualElement>> groupSubCardMap = new Dictionary<string, Dictionary<string, VisualElement>>();
 
         private UIDocument uiDocument;
         private MonitorPanelConfig resolvedConfig;
@@ -35,7 +36,8 @@ namespace ScopeRuntimeMonitoring
             panelSettings ??= LoadDefaultPanelSettings();
 
             rowBindings.Clear();
-            targetToBoxMap.Clear();
+            groupToBoxMap.Clear();
+            groupSubCardMap.Clear();
             lastAppliedAnchor = null;
             lastUpdateTime = 0f;
 
@@ -55,32 +57,46 @@ namespace ScopeRuntimeMonitoring
             Monitor.TargetUnregistered -= OnTargetUnregistered;
 
             rowBindings.Clear();
-            targetToBoxMap.Clear();
+            groupToBoxMap.Clear();
+            groupSubCardMap.Clear();
         }
 
         private void OnTargetRegistered(object target)
         {
             EnsureUIExists();
             EnsureColumnContainer();
-            AddBoxForTarget(target);
+
+            var allHandles = Monitor.Registry.GetMonitorHandles();
+            var handlesForTarget = allHandles.Where(handle => ReferenceEquals(handle.Target, target)).ToList();
+
+            foreach (var handle in handlesForTarget)
+            {
+                RegisterHandleUI(handle);
+            }
         }
 
         private void OnTargetUnregistered(object target)
         {
             if (target == null)
                 return;
-            
-            if (targetToBoxMap.TryGetValue(target, out var boxElement))
+
+            var targetBindings = rowBindings.Where(binding => binding.Handle != null && ReferenceEquals(binding.Handle.Target, target)).ToList();
+
+            foreach (var binding in targetBindings)
             {
-                // Remove the box element from the hierarchy
-                if (boxElement.parent != null)
-                    boxElement.parent.Remove(boxElement);
-                
-                targetToBoxMap.Remove(target);
+                if (binding.WidgetRoot != null && binding.WidgetRoot.parent != null)
+                {
+                    var statRow = binding.WidgetRoot.parent;
+                    if (statRow != null && statRow.parent != null)
+                    {
+                        statRow.parent.Remove(statRow);
+                    }
+                }
+
+                rowBindings.Remove(binding);
             }
 
-            // Clean up row bindings referencing this target
-            rowBindings.RemoveAll(binding => ReferenceEquals(binding.Handle.Target, target));
+            PruneEmptyBoxesAndSubGroups();
         }
 
         private void BuildInitialLayoutFromExistingTargets()
@@ -88,14 +104,10 @@ namespace ScopeRuntimeMonitoring
             EnsureColumnContainer();
 
             var allHandles = Monitor.Registry.GetMonitorHandles();
-            var existingTargets = allHandles
-                .Select(handle => handle.Target)
-                .Where(target => target != null)
-                .Distinct()
-                .ToList();
-
-            foreach (var target in existingTargets)
-                AddBoxForTarget(target);
+            foreach (var handle in allHandles)
+            {
+                RegisterHandleUI(handle);
+            }
         }
 
         private void EnsureColumnContainer()
@@ -169,54 +181,257 @@ namespace ScopeRuntimeMonitoring
             return target.GetType().Name;
         }
 
-        private void AddBoxForTarget(object target)
+        private void RegisterHandleUI(IMonitorHandle handle)
         {
-            if (target == null)
+            if (handle == null || handle.Metadata.Enabled == false)
                 return;
 
-            if (targetToBoxMap.ContainsKey(target))
-                return;
+            string groupName = !string.IsNullOrWhiteSpace(handle.Metadata.Group)
+                ? handle.Metadata.Group
+                : GetDisplayNameForTarget(handle.Target);
 
-            if (!TryResolveBoxOverrides(target, out var boxOverrides))
-                return;
+            string subGroupName = handle.Metadata.SubGroup;
+
+            var boxOverrides = FindBoxOverrides(groupName, handle.Target);
 
             if (!IsBoxAllowedForThisPanel(boxOverrides))
                 return;
 
             var targetAnchor = ResolveBoxAnchor(boxOverrides);
 
-            var allHandles = new List<IMonitorHandle>(Monitor.Registry.GetMonitorHandles());
-            var handlesForTarget = allHandles.Where(handle => ReferenceEquals(handle.Target, target)).ToList();
+            // 1. Find or create the main box
+            if (!groupToBoxMap.TryGetValue(groupName, out var boxElement))
+            {
+                boxElement = CreateEmptyBox(groupName, boxOverrides);
+                groupToBoxMap[groupName] = boxElement;
 
-            if (handlesForTarget.Count == 0)
+                if (GetActivePanelCount() <= 1 && singlePanelAnchorContainers.TryGetValue(targetAnchor, out var anchorContainer))
+                    anchorContainer.Add(boxElement);
+                else
+                    columnContainer.Add(boxElement);
+            }
+
+            var statsContentHolder = boxElement.Q<VisualElement>(className: "stats-content-holder");
+            if (statsContentHolder == null)
                 return;
 
-            var title = GetDisplayNameForTarget(target);
-            var boxElement = CreateUITKBoxForInstance(target, title, handlesForTarget, boxOverrides);
+            // 2. Find or create the destination container (sub-group or statsContentHolder directly)
+            VisualElement targetContainer = statsContentHolder;
+            if (!string.IsNullOrWhiteSpace(subGroupName))
+            {
+                if (!groupSubCardMap.TryGetValue(groupName, out var subMap))
+                {
+                    subMap = new Dictionary<string, VisualElement>();
+                    groupSubCardMap[groupName] = subMap;
+                }
 
-            targetToBoxMap[target] = boxElement;
+                if (!subMap.TryGetValue(subGroupName, out var subGroupElement))
+                {
+                    subGroupElement = CreateSubGroupContainer(subGroupName);
+                    subMap[subGroupName] = subGroupElement;
+                    statsContentHolder.Add(subGroupElement);
+                }
+                targetContainer = subGroupElement;
+            }
 
-            if (GetActivePanelCount() <= 1 && singlePanelAnchorContainers.TryGetValue(targetAnchor, out var anchorContainer))
-                anchorContainer.Add(boxElement);
-            else
-                columnContainer.Add(boxElement);
+            // 3. Create the row element for this handle
+            var rowContainer = new VisualElement();
+            rowContainer.AddToClassList("stat-row");
+
+            var keyLabel = new Label(handle.Name + ":");
+            keyLabel.AddToClassList("stat-label");
+
+            var binding = new RowBinding
+            {
+                Handle = handle,
+                KeyLabel = keyLabel
+            };
+
+            var widgetRoot = CreateWidgetRoot(handle, binding);
+            rowContainer.Add(keyLabel);
+            rowContainer.Add(widgetRoot);
+            targetContainer.Add(rowContainer);
+
+            ApplyRowStyles(rowContainer, boxOverrides);
+
+            rowBindings.Add(binding);
         }
 
-        private bool TryResolveBoxOverrides(object target, out MonitorBoxOverrides boxOverrides)
+        private MonitorBoxOverrides FindBoxOverrides(string groupName, object target)
         {
-            boxOverrides = null;
+            var overridesInScene = FindObjectsOfType<MonitorBoxOverrides>();
+            foreach (var ov in overridesInScene)
+            {
+                if (ov != null && ov.BoxId == groupName)
+                    return ov;
+            }
 
-            if (target is not Component component)
-                return true;
-            
-            boxOverrides = component.GetComponent<MonitorBoxOverrides>();
-            return true;
+            if (target is Component component && component != null)
+            {
+                var localOverrides = component.GetComponent<MonitorBoxOverrides>();
+                if (localOverrides != null)
+                    return localOverrides;
+            }
+
+            return null;
+        }
+
+        private void PruneEmptyBoxesAndSubGroups()
+        {
+            var emptyGroups = new List<string>();
+
+            foreach (var groupPair in groupToBoxMap.ToList())
+            {
+                var groupName = groupPair.Key;
+                var boxElement = groupPair.Value;
+                var statsContentHolder = boxElement.Q<VisualElement>(className: "stats-content-holder");
+
+                if (statsContentHolder == null)
+                    continue;
+
+                if (groupSubCardMap.TryGetValue(groupName, out var subMap))
+                {
+                    var emptySubGroups = new List<string>();
+
+                    foreach (var subPair in subMap.ToList())
+                    {
+                        var subGroupName = subPair.Key;
+                        var subGroupElement = subPair.Value;
+
+                        int rowCount = subGroupElement.Query<VisualElement>(className: "stat-row").ToList().Count;
+                        if (rowCount == 0)
+                        {
+                            if (subGroupElement.parent != null)
+                                subGroupElement.parent.Remove(subGroupElement);
+                            emptySubGroups.Add(subGroupName);
+                        }
+                    }
+
+                    foreach (var emptySub in emptySubGroups)
+                        subMap.Remove(emptySub);
+
+                    if (subMap.Count == 0)
+                        groupSubCardMap.Remove(groupName);
+                }
+
+                int totalRowsInBox = boxElement.Query<VisualElement>(className: "stat-row").ToList().Count;
+                if (totalRowsInBox == 0)
+                {
+                    if (boxElement.parent != null)
+                        boxElement.parent.Remove(boxElement);
+                    emptyGroups.Add(groupName);
+                }
+            }
+
+            foreach (var emptyGroup in emptyGroups)
+            {
+                groupToBoxMap.Remove(emptyGroup);
+            }
+        }
+
+        private VisualElement CreateEmptyBox(string title, MonitorBoxOverrides boxOverrides)
+        {
+            var box = new VisualElement();
+            box.AddToClassList("custom-box");
+            box.pickingMode = PickingMode.Position;
+
+            var headerRow = new VisualElement();
+            headerRow.AddToClassList("box-header-row");
+
+            var titleLabel = new Label(title);
+            titleLabel.AddToClassList("box-header");
+            headerRow.Add(titleLabel);
+
+            var toggleButton = new Button() { text = "−" };
+            toggleButton.AddToClassList("collapse-btn");
+            headerRow.Add(toggleButton);
+
+            box.Add(headerRow);
+
+            var statsContainer = new VisualElement();
+            statsContainer.AddToClassList("stats-content-holder");
+            statsContainer.pickingMode = PickingMode.Ignore;
+
+            box.Add(statsContainer);
+
+            ApplyBoxOverridesOnly(box, boxOverrides);
+
+            toggleButton.clicked += () =>
+            {
+                statsContainer.ToggleInClassList("stats-content-holder--collapsed");
+                toggleButton.text = statsContainer.ClassListContains("stats-content-holder--collapsed") ? "+" : "−";
+            };
+
+            return box;
+        }
+
+        private VisualElement CreateSubGroupContainer(string subGroupName)
+        {
+            var subGroup = new VisualElement();
+            subGroup.AddToClassList("sub-group-container");
+
+            var subHeader = new Label(subGroupName);
+            subHeader.AddToClassList("sub-group-header");
+            subGroup.Add(subHeader);
+
+            return subGroup;
+        }
+
+        private void ApplyBoxOverridesOnly(VisualElement box, MonitorBoxOverrides boxOverrides)
+        {
+            if (boxOverrides == null)
+                return;
+
+            if (boxOverrides.OverrideBoxStyleSheet && boxOverrides.BoxStyleSheet != null && !box.styleSheets.Contains(boxOverrides.BoxStyleSheet))
+            {
+                box.styleSheets.Add(boxOverrides.BoxStyleSheet);
+            }
+
+            if (boxOverrides.OverridePanelWidth)
+            {
+                box.style.width = boxOverrides.PanelWidth;
+                box.style.minWidth = boxOverrides.PanelWidth;
+            }
+
+            if (boxOverrides.OverridePanelHeight)
+            {
+                box.style.height = boxOverrides.PanelHeight;
+                box.style.minHeight = boxOverrides.PanelHeight;
+            }
+
+            if (boxOverrides.OverrideFontSize)
+            {
+                foreach (var child in box.Children())
+                {
+                    if (child is Label label)
+                        label.style.fontSize = boxOverrides.FontSize;
+                }
+            }
+        }
+
+        private void ApplyRowStyles(VisualElement row, MonitorBoxOverrides boxOverrides)
+        {
+            if (boxOverrides == null)
+                return;
+
+            if (boxOverrides.OverrideRowHeight)
+                row.style.height = boxOverrides.RowHeight;
+
+            if (boxOverrides.OverrideRowSpacing)
+                row.style.marginBottom = boxOverrides.RowSpacing;
+
+            if (boxOverrides.OverrideFontSize)
+            {
+                foreach (var child in row.Children())
+                {
+                    if (child is Label label)
+                        label.style.fontSize = boxOverrides.FontSize;
+                }
+            }
         }
 
         private bool IsBoxAllowedForThisPanel(MonitorBoxOverrides boxOverrides)
         {
-            // In single-panel mode, show all enabled boxes regardless of routing anchor.
-            // This keeps the default experience intuitive when users have only one runtime panel.
             if (GetActivePanelCount() <= 1)
             {
                 return boxOverrides == null || boxOverrides.EnableRuntimeBox;
@@ -245,63 +460,6 @@ namespace ScopeRuntimeMonitoring
         private static int GetActivePanelCount()
         {
             return FindObjectsOfType<MonitorPanelView>().Length;
-        }
-
-        private VisualElement CreateUITKBoxForInstance(object target, string title, IReadOnlyList<IMonitorHandle> handles, MonitorBoxOverrides boxOverrides)
-        {
-            var box = new VisualElement();
-            box.AddToClassList("custom-box");
-            box.pickingMode = PickingMode.Position;
-
-            var headerRow = new VisualElement();
-            headerRow.AddToClassList("box-header-row");
-
-            var titleLabel = new Label(title);
-            titleLabel.AddToClassList("box-header");
-            headerRow.Add(titleLabel);
-
-            var toggleButton = new Button() { text = "−" };
-            toggleButton.AddToClassList("collapse-btn");
-            headerRow.Add(toggleButton);
-
-            box.Add(headerRow);
-
-            var statsContainer = new VisualElement();
-            statsContainer.AddToClassList("stats-content-holder");
-            statsContainer.pickingMode = PickingMode.Ignore;
-
-            foreach (var handle in handles)
-            {
-                var rowContainer = new VisualElement();
-                rowContainer.AddToClassList("stat-row");
-
-                var keyLabel = new Label(handle.Name + ":");
-                keyLabel.AddToClassList("stat-label");
-
-                var binding = new RowBinding
-                {
-                    Handle = handle,
-                    KeyLabel = keyLabel
-                };
-
-                var widgetRoot = CreateWidgetRoot(handle, binding);
-                rowContainer.Add(keyLabel);
-                rowContainer.Add(widgetRoot);
-                statsContainer.Add(rowContainer);
-
-                rowBindings.Add(binding);
-            }
-
-            ApplyBoxOverrides(box, statsContainer, boxOverrides);
-
-            toggleButton.clicked += () =>
-            {
-                statsContainer.ToggleInClassList("stats-content-holder--collapsed");
-                toggleButton.text = statsContainer.ClassListContains("stats-content-holder--collapsed") ? "+" : "−";
-            };
-
-            box.Add(statsContainer);
-            return box;
         }
 
         private VisualElement CreateWidgetRoot(IMonitorHandle handle, RowBinding binding)
@@ -388,62 +546,6 @@ namespace ScopeRuntimeMonitoring
 
             binding.WidgetRoot = root;
             return root;
-        }
-
-        private void ApplyBoxOverrides(VisualElement box, VisualElement statsContainer, MonitorBoxOverrides boxOverrides)
-        {
-            if (boxOverrides == null)
-                return;
-
-            if (boxOverrides.OverrideBoxStyleSheet && boxOverrides.BoxStyleSheet != null && !box.styleSheets.Contains(boxOverrides.BoxStyleSheet))
-            {
-                box.styleSheets.Add(boxOverrides.BoxStyleSheet);
-            }
-
-            if (boxOverrides.OverridePanelWidth)
-            {
-                box.style.width = boxOverrides.PanelWidth;
-                box.style.minWidth = boxOverrides.PanelWidth;
-            }
-
-            if (boxOverrides.OverridePanelHeight)
-            {
-                box.style.height = boxOverrides.PanelHeight;
-                box.style.minHeight = boxOverrides.PanelHeight;
-            }
-
-            if (boxOverrides.OverrideFontSize || boxOverrides.OverrideRowHeight || boxOverrides.OverrideRowSpacing)
-            {
-                foreach (var row in statsContainer.Children())
-                {
-                    if (row == null)
-                        continue;
-
-                    if (boxOverrides.OverrideRowHeight)
-                        row.style.height = boxOverrides.RowHeight;
-
-                    if (boxOverrides.OverrideRowSpacing)
-                        row.style.marginBottom = boxOverrides.RowSpacing;
-
-                    if (boxOverrides.OverrideFontSize)
-                    {
-                        foreach (var child in row.Children())
-                        {
-                            if (child is Label label)
-                                label.style.fontSize = boxOverrides.FontSize;
-                        }
-                    }
-                }
-            }
-
-            if (boxOverrides.OverrideFontSize)
-            {
-                foreach (var child in box.Children())
-                {
-                    if (child is Label label)
-                        label.style.fontSize = boxOverrides.FontSize;
-                }
-            }
         }
 
         private void Update()

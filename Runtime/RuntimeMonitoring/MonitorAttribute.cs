@@ -9,6 +9,7 @@ namespace ScopeRuntimeMonitoring
 
         public string Id { get; set; }
         public string Group { get; set; }
+        public string SubGroup { get; set; }
         public string Variant { get; set; }
         public MonitorWidgetType WidgetType { get; set; } = MonitorWidgetType.Value;
         public bool Editable { get; set; }

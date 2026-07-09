@@ -186,3 +186,32 @@
 .unity-toggle__checkmark:checked {
     background-color: #3b71f7;
 }
+
+/* Sub-group container */
+.sub-group-container {
+    margin-top: 2px;
+    margin-bottom: 2px;
+    margin-left: -8px;
+    margin-right: -8px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-radius: 6px;
+    background-color: #27282c;
+    border-width: 1px;
+    border-color: #2e3035;
+}
+
+/* Sub-group header label */
+.sub-group-header {
+    color: #5e646b;
+    font-size: 10px;
+    -unity-font-style: bold;
+    margin: 0px;
+    margin-bottom: 6px;
+    padding: 0px;
+    padding-bottom: 2px;
+    border-bottom-width: 1px;
+    border-color: rgba(255, 255, 255, 0.05);
+}
