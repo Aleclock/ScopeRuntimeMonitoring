@@ -359,7 +359,9 @@ namespace ScopeRuntimeMonitoring
             toggleButton.clicked += () =>
             {
                 statsContainer.ToggleInClassList("stats-content-holder--collapsed");
-                toggleButton.text = statsContainer.ClassListContains("stats-content-holder--collapsed") ? "+" : "−";
+                bool isCollapsed = statsContainer.ClassListContains("stats-content-holder--collapsed");
+                toggleButton.text = isCollapsed ? "+" : "−";
+                statsContainer.style.display = isCollapsed ? DisplayStyle.None : DisplayStyle.Flex;
             };
 
             return box;
