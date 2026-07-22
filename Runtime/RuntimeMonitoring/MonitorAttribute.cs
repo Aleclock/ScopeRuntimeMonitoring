@@ -17,6 +17,7 @@ namespace ScopeRuntimeMonitoring
         public float Max { get; set; } = 1f;
         public float Step { get; set; } = 0.1f;
         public bool Enabled { get; set; } = true;
+        public int Order { get; set; } = 0;
 
         public MonitorAttribute(string label)
         {

@@ -1,7 +1,7 @@
 {
   "name": "com.acproject.scoperuntimemonitoring",
   "displayName": "Scope Runtime Monitoring",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "unity": "2021.3",
   "description": "Runtime monitoring UI toolkit for debugging variables and components.",
   "keywords": ["debug","monitoring","runtime","ui"],

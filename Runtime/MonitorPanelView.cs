@@ -237,6 +237,7 @@ namespace ScopeRuntimeMonitoring
             // 3. Create the row element for this handle
             var rowContainer = new VisualElement();
             rowContainer.AddToClassList("stat-row");
+            rowContainer.userData = handle;
 
             var keyLabel = new Label(handle.Name + ":");
             keyLabel.AddToClassList("stat-label");
@@ -250,11 +251,34 @@ namespace ScopeRuntimeMonitoring
             var widgetRoot = CreateWidgetRoot(handle, binding);
             rowContainer.Add(keyLabel);
             rowContainer.Add(widgetRoot);
-            targetContainer.Add(rowContainer);
+            InsertRowContainerSorted(targetContainer, rowContainer, handle);
 
             ApplyRowStyles(rowContainer, boxOverrides);
 
             rowBindings.Add(binding);
+        }
+
+        private void InsertRowContainerSorted(VisualElement container, VisualElement rowContainer, IMonitorHandle handle)
+        {
+            bool inserted = false;
+            for (int i = 0; i < container.childCount; i++)
+            {
+                var child = container[i];
+                if (child.userData is IMonitorHandle childHandle)
+                {
+                    if (handle.Metadata.Order < childHandle.Metadata.Order)
+                    {
+                        container.Insert(i, rowContainer);
+                        inserted = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!inserted)
+            {
+                container.Add(rowContainer);
+            }
         }
 
         private MonitorBoxOverrides FindBoxOverrides(string groupName, object target)

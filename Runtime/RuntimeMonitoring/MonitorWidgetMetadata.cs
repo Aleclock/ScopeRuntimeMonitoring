@@ -16,6 +16,7 @@ namespace ScopeRuntimeMonitoring
         public readonly float Max;
         public readonly float Step;
         public readonly bool Enabled;
+        public readonly int Order;
 
         public MonitorWidgetMetadata(
             string id,
@@ -28,7 +29,8 @@ namespace ScopeRuntimeMonitoring
             float min,
             float max,
             float step,
-            bool enabled)
+            bool enabled,
+            int order)
         {
             Id = id;
             Label = label;
@@ -41,6 +43,7 @@ namespace ScopeRuntimeMonitoring
             Max = max;
             Step = step;
             Enabled = enabled;
+            Order = order;
         }
 
         public static MonitorWidgetMetadata From(object target, MemberInfo member, MonitorAttribute attribute)
@@ -76,8 +79,9 @@ namespace ScopeRuntimeMonitoring
             var max = attribute != null ? attribute.Max : 1f;
             var step = attribute != null ? attribute.Step : 0.1f;
             var enabled = attribute == null || attribute.Enabled;
+            var order = attribute != null ? attribute.Order : 0;
 
-            return new MonitorWidgetMetadata(id, label, group, subGroup, variant, widgetType, editable, min, max, step, enabled);
+            return new MonitorWidgetMetadata(id, label, group, subGroup, variant, widgetType, editable, min, max, step, enabled, order);
         }
     }
 }
