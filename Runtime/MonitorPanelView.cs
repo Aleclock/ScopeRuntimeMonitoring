@@ -261,23 +261,32 @@ namespace ScopeRuntimeMonitoring
         private void InsertRowContainerSorted(VisualElement container, VisualElement rowContainer, IMonitorHandle handle)
         {
             bool inserted = false;
+            UnityEngine.Debug.Log($"[Monitor] Inserting '{handle.Name}' (Order: {handle.Metadata.Order}) into group '{handle.Metadata.Group}'");
+
             for (int i = 0; i < container.childCount; i++)
             {
                 var child = container[i];
                 if (child.userData is IMonitorHandle childHandle)
                 {
+                    UnityEngine.Debug.Log($"  Comparing with existing child '{childHandle.Name}' (Order: {childHandle.Metadata.Order}) at index {i}");
                     if (handle.Metadata.Order < childHandle.Metadata.Order)
                     {
                         container.Insert(i, rowContainer);
                         inserted = true;
+                        UnityEngine.Debug.Log($"  Inserted '{handle.Name}' at index {i} (before '{childHandle.Name}')");
                         break;
                     }
+                }
+                else
+                {
+                    UnityEngine.Debug.Log($"  Skipped child at index {i} (not a monitor handle or userData is null)");
                 }
             }
 
             if (!inserted)
             {
                 container.Add(rowContainer);
+                UnityEngine.Debug.Log($"  Appended '{handle.Name}' to the end of container (index {container.childCount - 1})");
             }
         }
 
