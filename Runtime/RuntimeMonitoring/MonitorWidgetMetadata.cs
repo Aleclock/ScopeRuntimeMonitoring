@@ -79,7 +79,7 @@ namespace ScopeRuntimeMonitoring
             var max = attribute != null ? attribute.Max : 1f;
             var step = attribute != null ? attribute.Step : 0.1f;
             var enabled = attribute == null || attribute.Enabled;
-            var order = attribute != null ? attribute.Order : 0;
+            var order = attribute != null ? attribute.Order : int.MaxValue;
 
             return new MonitorWidgetMetadata(id, label, group, subGroup, variant, widgetType, editable, min, max, step, enabled, order);
         }
