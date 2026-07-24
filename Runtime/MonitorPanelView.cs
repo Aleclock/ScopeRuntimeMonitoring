@@ -256,6 +256,50 @@ namespace ScopeRuntimeMonitoring
             ApplyRowStyles(rowContainer, boxOverrides);
 
             rowBindings.Add(binding);
+
+            SortContainerChildren(statsContentHolder);
+        }
+
+        private void SortContainerChildren(VisualElement container)
+        {
+            var children = new List<VisualElement>();
+            for (int i = 0; i < container.childCount; i++)
+            {
+                children.Add(container[i]);
+            }
+
+            children.Sort((a, b) => GetElementOrder(a).CompareTo(GetElementOrder(b)));
+
+            for (int i = 0; i < children.Count; i++)
+            {
+                container.Add(children[i]);
+            }
+        }
+
+        private int GetElementOrder(VisualElement el)
+        {
+            if (el.userData is IMonitorHandle handle)
+            {
+                return handle.Metadata.Order;
+            }
+            else if (el.ClassListContains("sub-group-container"))
+            {
+                int minOrder = int.MaxValue;
+                for (int i = 0; i < el.childCount; i++)
+                {
+                    var child = el[i];
+                    if (child.userData is IMonitorHandle childHandle)
+                    {
+                        int order = childHandle.Metadata.SubGroupOrder != int.MaxValue 
+                            ? childHandle.Metadata.SubGroupOrder 
+                            : childHandle.Metadata.Order;
+                        if (order < minOrder)
+                            minOrder = order;
+                    }
+                }
+                return minOrder;
+            }
+            return int.MaxValue;
         }
 
         private void InsertRowContainerSorted(VisualElement container, VisualElement rowContainer, IMonitorHandle handle)

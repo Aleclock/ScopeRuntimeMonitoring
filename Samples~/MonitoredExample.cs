@@ -5,13 +5,13 @@ public class MonitoredExample : MonoBehaviour
 {
     public float currentHealth = 100f;
 
-    [Monitor("Health", Group = "Combat", SubGroup = "Player", Order = 1)]
+    [Monitor("Health", Group = "Combat", SubGroup = "Player", Order = 1, SubGroupOrder = 1)]
     public float Health => currentHealth;
 
-    [Monitor("Is Alive", Group = "Combat", SubGroup = "Player", Order = 0)]
+    [Monitor("Is Alive", Group = "Combat", SubGroup = "Player", Order = 0, SubGroupOrder = 1)]
     public bool IsAlive => currentHealth > 0;
 
-    [Monitor("Score", Group = "Combat", SubGroup = "Global")]
+    [Monitor("Score", Group = "Combat", SubGroup = "Global", SubGroupOrder = 0)]
     public int Score => (int)(currentHealth * 2);
 
     [Monitor("Position")]
