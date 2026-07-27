@@ -543,6 +543,18 @@ namespace ScopeRuntimeMonitoring
 
             switch (handle.Metadata.WidgetType)
             {
+                case MonitorWidgetType.Custom:
+                {
+                    if (Monitor.TryGetCustomWidgetCreator(handle.Metadata.Variant, out var creator))
+                    {
+                        var widget = creator(handle, out var updateCallback);
+                        binding.CustomUpdateCallback = updateCallback;
+                        root.Add(widget);
+                        break;
+                    }
+                    goto default;
+                }
+
                 case MonitorWidgetType.Toggle:
                 {
                     var toggle = new Toggle();
@@ -606,8 +618,10 @@ namespace ScopeRuntimeMonitoring
                 case MonitorWidgetType.Value:
                 default:
                 {
-                    var valueLabel = new Label(ValueFormatter.FormatValue(rawValue));
+                    var text = ValueFormatter.FormatValue(rawValue);
+                    var valueLabel = new Label(text);
                     valueLabel.AddToClassList("stat-value");
+                    ToggleMultilineClass(valueLabel, text);
                     root.Add(valueLabel);
 
                     binding.ValueLabel = valueLabel;
@@ -693,11 +707,26 @@ namespace ScopeRuntimeMonitoring
                         }
                         break;
 
+                    case MonitorWidgetType.Custom:
+                        if (binding.CustomUpdateCallback != null)
+                            binding.CustomUpdateCallback(binding.Handle.GetValueRaw());
+                        else if (binding.ValueLabel != null)
+                        {
+                            var text = binding.Handle.GetValueString();
+                            binding.ValueLabel.text = text;
+                            ToggleMultilineClass(binding.ValueLabel, text);
+                        }
+                        break;
+
                     case MonitorWidgetType.InputValue:
                     case MonitorWidgetType.Value:
                     default:
                         if (binding.ValueLabel != null)
-                            binding.ValueLabel.text = binding.Handle.GetValueString();
+                        {
+                            var text = binding.Handle.GetValueString();
+                            binding.ValueLabel.text = text;
+                            ToggleMultilineClass(binding.ValueLabel, text);
+                        }
                         break;
                 }
             }
@@ -827,6 +856,19 @@ namespace ScopeRuntimeMonitoring
             }
         }
 
+        private void ToggleMultilineClass(Label label, string text)
+        {
+            if (label == null) return;
+            if (text != null && text.Contains('\n'))
+            {
+                label.AddToClassList("stat-value--multiline");
+            }
+            else
+            {
+                label.RemoveFromClassList("stat-value--multiline");
+            }
+        }
+
         #endregion
 
         private sealed class RowBinding
@@ -837,6 +879,7 @@ namespace ScopeRuntimeMonitoring
             public Toggle ToggleControl;
             public ProgressBar ProgressControl;
             public VisualElement WidgetRoot;
+            public Action<object> CustomUpdateCallback;
         }
     }
 }

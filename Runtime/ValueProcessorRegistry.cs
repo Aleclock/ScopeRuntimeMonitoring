@@ -18,6 +18,18 @@ namespace ScopeRuntimeMonitoring
                 return $"({vec.x:F2}, {vec.y:F2}, {vec.z:F2})";
             };
 
+            // IEnumerable processor (excluding string)
+            _processors[typeof(System.Collections.IEnumerable)] = v =>
+            {
+                if (v is string s) return s;
+                var list = new List<string>();
+                foreach (var item in (System.Collections.IEnumerable)v)
+                {
+                    list.Add("• " + ValueFormatter.FormatValue(item));
+                }
+                return string.Join("\n", list);
+            };
+
             // TODO Add Quaternion
             // TODO Add Color
             // TODO Add Enums
@@ -32,6 +44,12 @@ namespace ScopeRuntimeMonitoring
         {
             if (type == null) return null;
             if (_processors.TryGetValue(type, out var p)) return p;
+
+            // Check interfaces
+            foreach (var iface in type.GetInterfaces())
+            {
+                if (_processors.TryGetValue(iface, out p)) return p;
+            }
 
             // Fallback to base types
             var baseType = type.BaseType;

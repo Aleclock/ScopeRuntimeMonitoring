@@ -64,13 +64,41 @@ namespace ScopeRuntimeMonitoring
                 ? attribute.Id
                 : $"{target?.GetHashCode() ?? 0}::{stableMemberName}";
 
-            var group = attribute != null && !string.IsNullOrWhiteSpace(attribute.Group)
-                ? attribute.Group
-                : member?.DeclaringType?.Name ?? string.Empty;
+            string group = null;
+            if (Monitor.GroupCustomizer != null)
+            {
+                group = Monitor.GroupCustomizer(target);
+            }
+            if (string.IsNullOrWhiteSpace(group) && target is IMonitorGroupCustomizer groupCustomizer)
+            {
+                group = groupCustomizer.GetMonitorGroup();
+            }
+            if (string.IsNullOrWhiteSpace(group) && attribute != null && !string.IsNullOrWhiteSpace(attribute.Group))
+            {
+                group = attribute.Group;
+            }
+            if (string.IsNullOrWhiteSpace(group))
+            {
+                group = member?.DeclaringType?.Name ?? string.Empty;
+            }
 
-            var subGroup = attribute != null && !string.IsNullOrWhiteSpace(attribute.SubGroup)
-                ? attribute.SubGroup
-                : string.Empty;
+            string subGroup = null;
+            if (Monitor.SubGroupCustomizer != null)
+            {
+                subGroup = Monitor.SubGroupCustomizer(target);
+            }
+            if (string.IsNullOrWhiteSpace(subGroup) && target is IMonitorSubGroupCustomizer subGroupCustomizer)
+            {
+                subGroup = subGroupCustomizer.GetMonitorSubGroup();
+            }
+            if (string.IsNullOrWhiteSpace(subGroup) && attribute != null && !string.IsNullOrWhiteSpace(attribute.SubGroup))
+            {
+                subGroup = attribute.SubGroup;
+            }
+            if (string.IsNullOrWhiteSpace(subGroup))
+            {
+                subGroup = string.Empty;
+            }
 
             var variant = attribute != null && !string.IsNullOrWhiteSpace(attribute.Variant)
                 ? attribute.Variant

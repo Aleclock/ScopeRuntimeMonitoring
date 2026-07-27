@@ -1,7 +1,7 @@
 using UnityEngine;
 using ScopeRuntimeMonitoring;
 
-public class MonitoredExample : MonoBehaviour
+public class MonitoredExample : MonoBehaviour, IMonitorGroupCustomizer
 {
     public float currentHealth = 100f;
 
@@ -16,6 +16,16 @@ public class MonitoredExample : MonoBehaviour
 
     [Monitor("Position")]
     public Vector3 Position => transform.position;
+
+    [Monitor("Active Quests", Group = "RPG Log")]
+    public System.Collections.Generic.List<string> Quests => new System.Collections.Generic.List<string>
+    {
+        "Defeat the dragon",
+        "Collect 5 herbs",
+        "Talk to the villager"
+    };
+
+    public string GetMonitorGroup() => $"Combat - {gameObject.name}";
 
     private void OnEnable() => Monitor.StartMonitoring(this);
     private void OnDisable() => Monitor.StopMonitoring(this);
