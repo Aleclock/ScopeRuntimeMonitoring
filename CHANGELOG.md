@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.2.0] - 2026-09-07
+### Added
+- Added `RuntimeMonitorToggle` standalone component to toggle monitoring UI visibility globally via hotkey (e.g., F1) or script API.
+
 ## [1.1.0] - 2026-07-27
 ### Added
 - Introduced `IMonitorGroupCustomizer` and `IMonitorSubGroupCustomizer` interfaces to customize box/group names dynamically at runtime per-instance.

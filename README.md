@@ -120,3 +120,28 @@ Monitor.RegisterCustomWidget("my_graph", (IMonitorHandle handle, out System.Acti
     return container;
 });
 ```
+
+---
+
+## Global Master Toggle (Hotkeys & Scripting)
+Attach the `RuntimeMonitorToggle` component to any GameObject in your scene (such as a GameManager or UI Manager) to control the visibility of all monitoring panels via hotkey or script:
+
+```csharp
+using UnityEngine;
+using ScopeRuntimeMonitoring;
+
+public class MyGameUI : MonoBehaviour
+{
+    [SerializeField] private RuntimeMonitorToggle monitorToggle;
+
+    public void OnClickDebugButton()
+    {
+        monitorToggle.Toggle();
+    }
+}
+```
+
+- **Configurable Hotkey**: Set `Toggle Key` (e.g., `F1`, `BackQuote`) in the Inspector to show/hide with a single press.
+- **Initial State**: Choose whether the UI starts visible or hidden.
+- **Persistence**: Optionally enable `Persist Across Scenes` to keep your toggle active across scene transitions.
+
